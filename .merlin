@@ -1,0 +1,7 @@
+PKG cow
+PKG re
+S lib
+S lib_test
+B _build
+B _build/lib
+B _build/lib_test
