@@ -1,0 +1,13 @@
+OASISFormat: 0.4
+Name:        mustache
+Version:     0.1
+Synopsis:    Mustache.js templates in OCaml
+Authors:     Rudi Grinberg
+License:     WTFPL
+Plugins:     META (0.4)
+
+Library mustache
+  Path:       lib
+  BuildTools: ocamlbuild
+  Modules:    Mustache
+  BuildDepends: cow,re
