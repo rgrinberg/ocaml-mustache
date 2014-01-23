@@ -120,7 +120,8 @@ module Lookup = struct
 
   let scalar x =
     match x with
-    | Null | Int _ | Float _ | Bool _ | String _ -> Json.to_string x
+    | Null | Int _ | Float _ | Bool _ -> Json.to_string x
+    | String s -> s
     | Array _ | Object _ -> failwith "Lookup.scalar: not a scalar"
 
   let section js ~key =
