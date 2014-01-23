@@ -5,6 +5,7 @@ Synopsis:    Mustache.js templates in OCaml
 Authors:     Rudi Grinberg
 License:     WTFPL
 Plugins:     META (0.4)
+BuildTools: ocamlbuild
 
 Library mustache
   Path:       lib
