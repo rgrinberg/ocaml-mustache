@@ -1,2 +1,2 @@
 #!/bin/sh
-opam install -y cow re sexplib
+opam install -y cow re sexplib oasis
