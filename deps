@@ -1,2 +1,2 @@
 #!/bin/sh
-opam install -y cow re
+opam install -y cow re sexplib
