@@ -14,7 +14,7 @@ let token1 _ =
     ["123"; "453"],
     5
   ) in
-  let tokens = Mustache.Tokenizer.tokenize s [
+  let tokens = Mustache.tokenize s [
     (`Word, " *\\([a-z]+\\) *");
     (`Number, " *\\([0-9]+\\) *");
   ] in

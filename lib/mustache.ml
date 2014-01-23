@@ -9,47 +9,45 @@ module String = StringLabels
 exception Missing_param of string with sexp
 exception Bad_template of string with sexp
 
-type mustache =
+type t =
   | Iter_var
   | String of string
   | Escaped of string                
   | Section of section
   | Unescaped of string
   | Partial of string
-  | Concat of mustache list
+  | Concat of t list
 and section = {
   name: string;
-  contents: mustache;
+  contents: t;
 } with sexp
 
-module Tokenizer = struct
-  (* TODO: very inefficient *)
-  let tokenize s tokens =
-    let res = tokens |> List.map ~f:(fun (t, re) -> (t, Str.regexp re)) in
-    let re = tokens
-             |> List.map ~f:snd
-             |> String.concat ~sep:"\\|"
-             |> Str.regexp in
-    let open Str in
-    s
-    |> Str.full_split re
-    |> List.map ~f:(function
-      | Text s -> `Text s
-      | Delim s ->
-        let group = ref s in
-        let tag =
-          res
-          |> List.find ~f:(fun (tag, re) ->
-            if Str.string_match re s 0
-            then begin
-              group := Str.matched_group 1 s;
-              true
-            end
-            else false)
-          |> fst
-        in
-        `Token (tag, !group))
-end
+(* TODO: very inefficient *)
+let tokenize s tokens =
+  let res = tokens |> List.map ~f:(fun (t, re) -> (t, Str.regexp re)) in
+  let re = tokens
+           |> List.map ~f:snd
+           |> String.concat ~sep:"\\|"
+           |> Str.regexp in
+  let open Str in
+  s
+  |> Str.full_split re
+  |> List.map ~f:(function
+    | Text s -> `Text s
+    | Delim s ->
+      let group = ref s in
+      let tag =
+        res
+        |> List.find ~f:(fun (tag, re) ->
+          if Str.string_match re s 0
+          then begin
+            group := Str.matched_group 1 s;
+            true
+          end
+          else false)
+        |> fst
+      in
+      `Token (tag, !group))
 
 (* TODO: rename *)
 let return = function
@@ -91,7 +89,7 @@ let of_string s =
     | (`Token (`Partial, s))::rest ->
       parse ~terminated name ((Partial s)::acc) rest
   in
-  match parse ~terminated:false "" [] (Tokenizer.tokenize s token_table) with
+  match parse ~terminated:false "" [] (tokenize s token_table) with
   | templates, [] -> return templates
   | _, _::_ -> assert false
 
