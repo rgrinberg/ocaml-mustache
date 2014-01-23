@@ -1,3 +1,4 @@
+open Sexplib.Std
 open Printf
 open MoreLabels
 open Cow
@@ -5,8 +6,8 @@ module Str = Re_str
 module List = ListLabels
 module String = StringLabels
 
-exception Missing_param of string
-exception Bad_template of string
+exception Missing_param of string with sexp
+exception Bad_template of string with sexp
 
 type mustache =
   | Iter_var
@@ -16,11 +17,10 @@ type mustache =
   | Unescaped of string
   | Partial of string
   | Concat of mustache list
-
 and section = {
   name: string;
   contents: mustache;
-}
+} with sexp
 
 module Tokenizer = struct
   (* TODO: very inefficient *)
