@@ -11,4 +11,4 @@ Library mustache
   Path:       lib
   BuildTools: ocamlbuild
   Modules:    Mustache
-  BuildDepends: cow,re
+  BuildDepends: cow,re,sexplib,sexplib.syntax
