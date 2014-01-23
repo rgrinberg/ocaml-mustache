@@ -110,19 +110,19 @@ let rec to_string = function
 module Lookup = struct
   open Json
   exception Invalid_lookup of string
-  (* look up a string, normal substitution *)
-  let str js ~key =
-    match js with
-    | Null | Int _ | Float _ | Bool _ -> Json.to_string js
-    | String s -> s
-    | Array _
-    | Object _ -> raise @@ Invalid_lookup ("Lookup.str: invalid key: " ^ key)
 
   let scalar x =
     match x with
     | Null | Int _ | Float _ | Bool _ -> Json.to_string x
     | String s -> s
     | Array _ | Object _ -> failwith "Lookup.scalar: not a scalar"
+
+  let str js ~key =
+    match js with
+    | Null | Int _ | Float _ | Bool _
+    | String _ | Array _ -> raise @@ Invalid_lookup ("str. not an object")
+    | Object assoc ->
+      assoc |> List.assoc key |> scalar
 
   let section js ~key =
     match js with
