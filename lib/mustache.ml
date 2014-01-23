@@ -51,6 +51,12 @@ module Tokenizer = struct
         `Token (tag, !group))
 end
 
+(* TODO: rename *)
+let return = function
+  | [] -> String ""
+  | [x] -> x
+  | xs -> Concat xs
+
 let of_string s =
   let token_table = [
     (`Iter          , "{{ \\(*\\.\\) *}}"      );
