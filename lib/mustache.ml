@@ -37,15 +37,16 @@ module Tokenizer = struct
       | Text s -> `Text s
       | Delim s ->
         let group = ref s in
-        let tag = res
-                  |> List.find ~f:(fun (tag, re) ->
-                    if Str.string_match re s 0
-                    then begin
-                      group := Str.matched_group 0 s;
-                      true
-                    end
-                    else false)
-                  |> fst
+        let tag =
+          res
+          |> List.find ~f:(fun (tag, re) ->
+            if Str.string_match re s 0
+            then begin
+              group := Str.matched_group 1 s;
+              true
+            end
+            else false)
+          |> fst
         in
         `Token (tag, !group))
 end
