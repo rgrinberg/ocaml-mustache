@@ -67,16 +67,33 @@ let of_string s =
     (`Partial       , "{{> *\\([^}]+\\) *}}"  );
     (`Unescape      , "{{ *\\([^}]+\\) *}}"   );
   ] in
-  let rec parse sections = function
-    | [] -> String ""
-    | (`Text s)::rest -> Concat [String s; parse sections rest]
-    | (`Token (`Iter, _))::rest -> Iter_var
-    | (`Token (`Escape, _))::rest -> Iter_var
-    | (`Token (`Section_start, _))::rest -> Iter_var
-    | (`Token (`Section_end, _))::rest -> Iter_var
-    | (`Token (`Unescape, _))::rest -> Iter_var
-    | (`Token (`Partial, _))::rest -> Iter_var
-  in parse [] (Tokenizer.tokenize s token_table)
+  (* TODO: clean the hell up *)
+  let rec parse ?(terminated=true) name acc = function
+    | [] when terminated ->
+      failwith @@ "Section: " ^ name ^ " is not terminated"
+    | [] -> (List.rev acc, [])
+    | (`Text s)::rest ->
+      parse ~terminated name ((String s)::acc) rest
+    | (`Token (`Iter, _))::rest ->
+      parse ~terminated name (Iter_var::acc) rest
+    | (`Token (`Escape, s))::rest ->
+      parse ~terminated name ((Escaped s)::acc) rest
+    | (`Token (`Section_start, name_))::rest ->
+      let (contents, rest) = parse name_ [] rest in
+      let section = Section { name=name_; contents=(return contents) } in
+      parse ~terminated:true name (section::acc) rest
+    | (`Token (`Section_end, section))::rest when section=name ->
+      (List.rev acc, rest)
+    | (`Token (`Section_end, section))::rest ->
+      failwith @@ "Mismatched section: " ^ section
+    | (`Token (`Unescape, s))::rest ->
+      parse ~terminated name ((Unescaped s)::acc) rest
+    | (`Token (`Partial, s))::rest ->
+      parse ~terminated name ((Partial s)::acc) rest
+  in
+  match parse ~terminated:false "" [] (Tokenizer.tokenize s token_table) with
+  | templates, [] -> return templates
+  | _, _::_ -> assert false
 
 let escape_html s = s
 
