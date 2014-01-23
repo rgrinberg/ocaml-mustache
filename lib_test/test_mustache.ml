@@ -30,10 +30,12 @@ let token1 _ =
 
 
 let mustache1 _ =
-  let s = "Hello: {{ name }}!" in
+  let s = "Hello {{ name }}!" in
   let tmpl = Mustache.of_string s in
   printf "tmpl parsed: %s\n" (Mustache.to_string tmpl);
-  assert_equal "" ""
+  let open Cow in
+  let js = Json.Object ["name", Json.String "testing"] in
+  assert_equal "Hello testing!" (Mustache.render tmpl js)
 
 let suite =
   "test mustache" >:::
