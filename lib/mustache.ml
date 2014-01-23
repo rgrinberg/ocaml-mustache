@@ -59,13 +59,13 @@ let return = function
 
 let of_string s =
   let token_table = [
-    (`Iter          , "{{ \\(*\\.\\) *}}"      );
-    (`Escape        , "{{{ * \\([^}]+\\) *}}}" );
-    (`Escape        , "{{& * \\([^}]+\\) *}}"  );
-    (`Section_start , "{{# * \\([^}]+\\) *}}"  );
-    (`Section_end   , "{{/ * \\([^}]+\\) *}}"  );
-    (`Partial       , "{{> * \\([^}]+\\) *}}"  );
-    (`Unescape      , "{{ * \\([^}]+\\) *}}"   );
+    (`Iter          , "{{ *\\(\\.\\) *}}"      );
+    (`Escape        , "{{{ *\\([^}]+\\) *}}}" );
+    (`Escape        , "{{& *\\([^}]+\\) *}}"  );
+    (`Section_start , "{{# *\\([^}]+\\) *}}"  );
+    (`Section_end   , "{{/ *\\([^}]+\\) *}}"  );
+    (`Partial       , "{{> *\\([^}]+\\) *}}"  );
+    (`Unescape      , "{{ *\\([^}]+\\) *}}"   );
   ] in
   let rec parse sections = function
     | [] -> String ""
