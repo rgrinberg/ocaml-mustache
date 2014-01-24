@@ -66,30 +66,31 @@ let of_string s =
     (`Unescape      , "{{ *\\([^} ]+\\) *}}"   );
   ] in
   (* TODO: clean the hell up *)
-  let rec parse ?(terminated=true) name acc = function
-    | [] when terminated ->
+  let rec parse section_count name acc = function
+    | [] when section_count > 0 ->
       failwith @@ "Section: " ^ name ^ " is not terminated"
     | [] -> (List.rev acc, [])
     | (`Text s)::rest ->
-      parse ~terminated name ((String s)::acc) rest
+      parse section_count name ((String s)::acc) rest
     | (`Token (`Iter, _))::rest ->
-      parse ~terminated name (Iter_var::acc) rest
+      parse section_count name (Iter_var::acc) rest
     | (`Token (`Escape, s))::rest ->
-      parse ~terminated name ((Escaped s)::acc) rest
+      parse section_count name ((Escaped s)::acc) rest
     | (`Token (`Section_start, name_))::rest ->
-      let (contents, rest) = parse name_ [] rest in
+      let (contents, rest) = parse (succ section_count) name_ [] rest in
       let section = Section { name=name_; contents=(return contents) } in
-      parse ~terminated:true name (section::acc) rest
+      parse section_count name (section::acc) rest
     | (`Token (`Section_end, section))::rest when section=name ->
       (List.rev acc, rest)
     | (`Token (`Section_end, section))::rest ->
       failwith @@ "Mismatched section: " ^ section
     | (`Token (`Unescape, s))::rest ->
-      parse ~terminated name ((Unescaped s)::acc) rest
+      parse section_count name ((Unescaped s)::acc) rest
     | (`Token (`Partial, s))::rest ->
-      parse ~terminated name ((Partial s)::acc) rest
+      parse section_count name ((Partial s)::acc) rest
   in
-  match parse ~terminated:false "" [] (tokenize s token_table) with
+  let tokens = tokenize s token_table in
+  match parse 0 "" [] tokens with
   | templates, [] -> return templates
   | _, _::_ -> assert false
 
