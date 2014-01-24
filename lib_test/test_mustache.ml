@@ -1,5 +1,6 @@
 open OUnit2
 open Printf
+open Cow
 module List = ListLabels
 module String = StringLabels
 
@@ -33,17 +34,24 @@ let mustache1 _ =
   let s = "Hello {{ name }}!" in
   let tmpl = Mustache.of_string s in
   (* printf "tmpl parsed: %s\n" (Mustache.to_string tmpl); *)
-  let open Cow in
   let js = Json.Object ["name", Json.String "testing"] in
   (* printf "Rendered: %s\n" (Mustache.render tmpl js); *)
   assert_equal "Hello testing!" (Mustache.render tmpl js)
 
 let mustache2 _ =
-  let open Cow in
   let tmpl = Mustache.of_string "{{#bool}}there{{/bool}}" in
   let js' b = Json.Object ["bool", Json.Bool b] in
   assert_equal "there" (Mustache.render tmpl @@ js' true);
   assert_equal "" (Mustache.render tmpl @@ js' false)
+
+let mustache_section_list1 _ =
+  let tmpl = Mustache.of_string "{{#implicit}}{{.}}{{/implicit}}" in
+  let js' b =
+    let strs = b |> List.map ~f:(fun s -> Json.String s) in
+    Json.Object ["implicit", Json.Array strs]
+  in
+  assert_equal "" (Mustache.render tmpl @@ js' []);
+  assert_equal "onetwothree" (Mustache.render tmpl @@ js' ["one";"two";"three"])
 
 let suite =
   "test mustache" >:::
@@ -51,6 +59,7 @@ let suite =
     "test simple token parsing" >:: token1;
     "mustache1" >:: mustache1;
     "bool sections" >:: mustache2;
+    "mustache section list 1" >:: mustache_section_list1;
   ]
 
 let () = run_test_tt_main suite
