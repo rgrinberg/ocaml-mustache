@@ -53,6 +53,20 @@ let mustache_section_list1 _ =
   assert_equal "" (Mustache.render tmpl @@ js' []);
   assert_equal "onetwothree" (Mustache.render tmpl @@ js' ["one";"two";"three"])
 
+let mustache_section_list2 _ =
+  let tmpl = Mustache.of_string "{{#things}}{{v1}}-{{v2}}{{/things}}" in
+  let js' pairs =
+    let dict (v1,v2) = Json.Object [
+      ("v1", (Json.String v1));
+      ("v2", (Json.String v2))
+    ] in
+    let pairs = pairs |> List.map ~f:dict in
+    Json.Object ["things", Json.Array pairs]
+  in
+  assert_equal "" (Mustache.render tmpl @@ js' []);
+  let vs = [("one","1");("two","2")] in
+  assert_equal "one-1two-2" (Mustache.render tmpl @@ js' vs)
+
 let suite =
   "test mustache" >:::
   [
@@ -60,6 +74,7 @@ let suite =
     "mustache1" >:: mustache1;
     "bool sections" >:: mustache2;
     "mustache section list 1" >:: mustache_section_list1;
+    "mustache section list 2" >:: mustache_section_list2;
   ]
 
 let () = run_test_tt_main suite
