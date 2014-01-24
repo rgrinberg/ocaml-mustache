@@ -38,11 +38,19 @@ let mustache1 _ =
   (* printf "Rendered: %s\n" (Mustache.render tmpl js); *)
   assert_equal "Hello testing!" (Mustache.render tmpl js)
 
+let mustache2 _ =
+  let open Cow in
+  let tmpl = Mustache.of_string "{{#bool}}there{{/bool}}" in
+  let js' b = Json.Object ["bool", Json.Bool b] in
+  assert_equal "there" (Mustache.render tmpl @@ js' true);
+  assert_equal "" (Mustache.render tmpl @@ js' false)
+
 let suite =
   "test mustache" >:::
   [
     "test simple token parsing" >:: token1;
     "mustache1" >:: mustache1;
+    "bool sections" >:: mustache2;
   ]
 
 let () = run_test_tt_main suite
