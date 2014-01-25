@@ -14,9 +14,12 @@ and section = {
   contents: t;
 } with sexp
 
+
 val of_string : string -> t
 val to_string : t -> string
 val render : t -> Ezjsonm.t -> string
+
+val escape_html : string -> string
 
 val tokenize : string -> ('a * string) list
   -> [> `Text of string | `Token of 'a * string ] list
