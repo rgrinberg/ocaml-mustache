@@ -67,7 +67,7 @@ let of_string s =
   (* TODO: clean the hell up *)
   let rec parse section_count name acc = function
     | [] when section_count > 0 ->
-      failwith @@ "Section: " ^ name ^ " is not terminated"
+      raise @@ Bad_template ("Section: " ^ name ^ " is not terminated")
     | [] -> (List.rev acc, [])
     | (`Text s)::rest ->
       parse section_count name ((String s)::acc) rest
@@ -82,7 +82,7 @@ let of_string s =
     | (`Token (`Section_end, section))::rest when section=name ->
       (List.rev acc, rest)
     | (`Token (`Section_end, section))::rest ->
-      failwith @@ "Mismatched section: " ^ section
+      raise @@ Bad_template ("Mismatched section: " ^ section)
     | (`Token (`Unescape, s))::rest ->
       parse section_count name ((Unescaped s)::acc) rest
     | (`Token (`Partial, s))::rest ->
