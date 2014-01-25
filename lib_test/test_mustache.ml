@@ -66,6 +66,12 @@ let mustache_section_list2 _ =
   let vs = [("one","1");("two","2")] in
   assert_equal "one-1two-2" (Mustache.render tmpl @@ js' vs)
 
+
+let test_html_escape1 _ =
+  let html = "<b>foo bar</b>" in
+  let escaped = Mustache.escape_html html in
+  assert_equal ~printer:(fun s -> s) "&lt;b&gt;foo bar&lt;/b&gt;" escaped
+
 let suite =
   "test mustache" >:::
   [
@@ -74,6 +80,7 @@ let suite =
     "bool sections" >:: mustache2;
     "mustache section list 1" >:: mustache_section_list1;
     "mustache section list 2" >:: mustache_section_list2;
+    "test html escaping" >:: test_html_escape1;
   ]
 
 let () = run_test_tt_main suite
