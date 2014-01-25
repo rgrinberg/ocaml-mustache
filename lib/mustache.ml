@@ -93,7 +93,19 @@ let of_string s =
   | templates, [] -> return templates
   | _, _::_ -> assert false
 
-let escape_html s = s
+let escape_table = [
+  ("&", "&amp;");
+  ("\"", "&quot;");
+  ("'", "&apos;");
+  (">", "&gt;");
+  ("<", "&lt;");
+] |> List.map ~f:(fun (re, v) -> (Str.regexp_string re, v))
+
+let escape_html init =
+  List.fold_left ~f:(fun s (search, replace) ->
+    Str.global_replace search replace s
+  ) ~init escape_table
+
 
 let rec to_string = function
   | Iter_var -> "{{.}}"
