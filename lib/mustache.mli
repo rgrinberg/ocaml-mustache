@@ -20,3 +20,4 @@ val render : t -> Cow.Json.t -> string
 
 val tokenize : string -> ('a * string) list
   -> [> `Text of string | `Token of 'a * string ] list
+(** Exported only for testing. Do not use *)
