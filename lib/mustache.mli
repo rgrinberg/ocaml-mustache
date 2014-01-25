@@ -16,7 +16,7 @@ and section = {
 
 val of_string : string -> t
 val to_string : t -> string
-val render : t -> Cow.Json.t -> string
+val render : t -> Ezjsonm.t -> string
 
 val tokenize : string -> ('a * string) list
   -> [> `Text of string | `Token of 'a * string ] list

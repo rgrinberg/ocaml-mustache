@@ -1,4 +1,4 @@
-PKG cow
+PKG ezjsonm
 PKG re
 PKG oUnit
 PKG sexplib

@@ -11,7 +11,7 @@ Library mustache
   Path:       lib
   BuildTools: ocamlbuild
   Modules:    Mustache
-  BuildDepends: cow,re,sexplib,sexplib.syntax
+  BuildDepends: re.str,ezjsonm,sexplib,sexplib.syntax
 
 Test test
   Run$:               flag(tests)

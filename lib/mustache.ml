@@ -1,7 +1,6 @@
 open Sexplib.Std
 open Printf
 open MoreLabels
-open Cow
 module Str = Re_str
 module List = ListLabels
 module String = StringLabels
@@ -109,32 +108,31 @@ let rec to_string = function
                 |> String.concat ~sep:""
 
 module Lookup = struct
-  open Json
   exception Invalid_lookup of string
 
   let scalar x =
     match x with
-    | Null | Int _ | Float _ | Bool _ -> Json.to_string x
-    | String s -> s
-    | Array _ | Object _ -> failwith "Lookup.scalar: not a scalar"
+    | `Null | `Float _ | `Bool _ -> Ezjsonm.to_string x
+    | `String s -> s
+    | `A _ | `O _ -> failwith "Lookup.scalar: not a scalar"
 
-  let str js ~key =
+  let str (js : Ezjsonm.t) ~key =
     match js with
-    | Null | Int _ | Float _ | Bool _
-    | String _ | Array _ -> raise @@ Invalid_lookup ("str. not an object")
-    | Object assoc ->
+    | `Null | `Float _ | `Bool _
+    | `String _ | `A _ -> raise @@ Invalid_lookup ("str. not an object")
+    | `O assoc ->
       assoc |> List.assoc key |> scalar
 
-  let section js ~key =
+  let section (js : Ezjsonm.t) ~key =
     match js with
-    | Null | Int _ | Float _ | Array _
-    | Bool _ | String _ -> invalid_arg @@ "section: " ^ key
-    | Object elems ->
+    | `Null | `Float _ | `A _
+    | `Bool _ | `String _ -> invalid_arg @@ "section: " ^ key
+    | `O elems ->
       match List.assoc key elems with
       (* php casting *)
-      | Null | Int _ | Float _ | Bool false | String "" -> `Bool false
-      | Bool true -> `Bool true
-      | Array e -> `List e
+      | `Null | `Float _ | `Bool false | `String "" -> `Bool false
+      | `Bool true -> `Bool true
+      | `A e -> `List e
       | _ -> invalid_arg @@ "section: invalid key: " ^ key
 end
 

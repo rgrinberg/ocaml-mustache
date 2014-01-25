@@ -1,6 +1,5 @@
 open OUnit2
 open Printf
-open Cow
 module List = ListLabels
 module String = StringLabels
 
@@ -34,21 +33,21 @@ let mustache1 _ =
   let s = "Hello {{ name }}!" in
   let tmpl = Mustache.of_string s in
   (* printf "tmpl parsed: %s\n" (Mustache.to_string tmpl); *)
-  let js = Json.Object ["name", Json.String "testing"] in
+  let js = `O ["name", `String "testing"] in
   (* printf "Rendered: %s\n" (Mustache.render tmpl js); *)
   assert_equal "Hello testing!" (Mustache.render tmpl js)
 
 let mustache2 _ =
   let tmpl = Mustache.of_string "{{#bool}}there{{/bool}}" in
-  let js' b = Json.Object ["bool", Json.Bool b] in
+  let js' b = `O ["bool", `Bool b] in
   assert_equal "there" (Mustache.render tmpl @@ js' true);
   assert_equal "" (Mustache.render tmpl @@ js' false)
 
 let mustache_section_list1 _ =
   let tmpl = Mustache.of_string "{{#implicit}}{{.}}{{/implicit}}" in
   let js' b =
-    let strs = b |> List.map ~f:(fun s -> Json.String s) in
-    Json.Object ["implicit", Json.Array strs]
+    let strs = b |> List.map ~f:(fun s -> `String s) in
+    `O ["implicit", `A strs]
   in
   assert_equal "" (Mustache.render tmpl @@ js' []);
   assert_equal "onetwothree" (Mustache.render tmpl @@ js' ["one";"two";"three"])
@@ -56,12 +55,12 @@ let mustache_section_list1 _ =
 let mustache_section_list2 _ =
   let tmpl = Mustache.of_string "{{#things}}{{v1}}-{{v2}}{{/things}}" in
   let js' pairs =
-    let dict (v1,v2) = Json.Object [
-      ("v1", (Json.String v1));
-      ("v2", (Json.String v2))
+    let dict (v1,v2) = `O [
+      ("v1", (`String v1));
+      ("v2", (`String v2))
     ] in
     let pairs = pairs |> List.map ~f:dict in
-    Json.Object ["things", Json.Array pairs]
+    `O ["things", `A pairs]
   in
   assert_equal "" (Mustache.render tmpl @@ js' []);
   let vs = [("one","1");("two","2")] in
