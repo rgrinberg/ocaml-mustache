@@ -1,5 +1,8 @@
 default: all
 
+conf-no-tests:
+	oasis setup
+
 configure:
 	oasis setup
 	ocaml setup.ml -configure --enable-tests
