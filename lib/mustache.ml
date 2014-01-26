@@ -21,6 +21,12 @@ and section = {
   contents: t;
 } with sexp
 
+let concat templates = Concat templates
+
+module Infix = struct
+  let (^) y x = Concat [x; y]
+end
+
 (* TODO: very inefficient *)
 let tokenize s tokens =
   let res = tokens |> List.map ~f:(fun (t, re) -> (t, Str.regexp re)) in
