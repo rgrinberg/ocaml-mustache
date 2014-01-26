@@ -7,3 +7,4 @@ lib/META
 *.native
 _tags
 *.mllib
+TAGS
