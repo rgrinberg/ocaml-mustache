@@ -1,5 +1,5 @@
-exception Missing_param of string with sexp
-exception Bad_template of string with sexp
+exception Invalid_param of string with sexp
+exception Invalid_template of string with sexp
 
 type t =
   | Iter_var
@@ -13,7 +13,6 @@ and section = {
   name: string;
   contents: t;
 } with sexp
-
 
 val of_string : string -> t
 val to_string : t -> string
