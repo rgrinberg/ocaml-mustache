@@ -1,5 +1,7 @@
 open OUnit2
 open Printf
+open Sexplib.Std
+
 module List = ListLabels
 module String = StringLabels
 
@@ -66,11 +68,16 @@ let mustache_section_list2 _ =
   let vs = [("one","1");("two","2")] in
   assert_equal "one-1two-2" (Mustache.render tmpl @@ js' vs)
 
-
 let test_html_escape1 _ =
   let html = "<b>foo bar</b>" in
   let escaped = Mustache.escape_html html in
   assert_equal ~printer:(fun s -> s) "&lt;b&gt;foo bar&lt;/b&gt;" escaped
+
+let test_sexp_conversion _ =
+  let s = Mustache.of_string "Hello {{ name }}" in
+  let s = s |> Mustache.sexp_of_t |> Sexplib.Conv.string_of_sexp in
+  Printf.printf "Sexp: %s\n" s;
+  assert_bool "created sexp" true
 
 let suite =
   "test mustache" >:::
@@ -81,6 +88,7 @@ let suite =
     "mustache section list 1" >:: mustache_section_list1;
     "mustache section list 2" >:: mustache_section_list2;
     "test html escaping" >:: test_html_escape1;
+    "test sexp conversion" >:: test_sexp_conversion;
   ]
 
 let () = run_test_tt_main suite
