@@ -75,7 +75,7 @@ let test_html_escape1 _ =
 
 let test_sexp_conversion _ =
   let s = Mustache.of_string "Hello {{ name }}" in
-  let s = s |> Mustache.sexp_of_t |> Sexplib.Conv.string_of_sexp in
+  let s = s |> Mustache.sexp_of_t |> Sexplib.Sexp.to_string in
   Printf.printf "Sexp: %s\n" s;
   assert_bool "created sexp" true
 
