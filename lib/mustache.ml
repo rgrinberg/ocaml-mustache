@@ -128,7 +128,8 @@ let rec to_string = function
 module Lookup = struct
   let scalar x =
     match x with
-    | `Null | `Float _ | `Bool _ -> Ezjsonm.to_string x
+    | `Null | `Bool _ -> Ezjsonm.to_string x
+    | `Float f -> string_of_float f
     | `String s -> s
     | `A _ | `O _ -> raise @@ Invalid_param "Lookup.scalar: not a scalar"
 
