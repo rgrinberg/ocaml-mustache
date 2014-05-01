@@ -11,7 +11,7 @@ exception Invalid_template of string with sexp
 type t =
   | Iter_var
   | String of string
-  | Escaped of string                
+  | Escaped of string
   | Section of section
   | Unescaped of string
   | Partial of string
