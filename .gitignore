@@ -8,3 +8,4 @@ lib/META
 _tags
 *.mllib
 TAGS
+*.mldylib
