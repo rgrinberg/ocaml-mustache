@@ -8,7 +8,7 @@ val to_string : t -> string
 val render : t -> Ezjsonm.t -> string
 
 val concat : t list -> t
-(** Concat a list of mustache templates. Faster than concatenating
+(** Concatenate a list of mustache templates. Faster than concatenating
     them as strings. *)
 
 module Infix : sig
