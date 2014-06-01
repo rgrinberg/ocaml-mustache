@@ -26,3 +26,13 @@ Executable test_mustache
   CompiledObject:     best
   Install:            false
   BuildDepends:       oUnit, mustache
+
+Executable mustache_cli
+  Path:               lib_test
+  MainIs:             mustache_cli.ml
+  Build$:             flag(tests)
+  Custom:             true
+  CompiledObject:     best
+  Install:            false
+  BuildDepends:       mustache
+
