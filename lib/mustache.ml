@@ -150,6 +150,7 @@ module Lookup = struct
       | `Null | `Float _ | `Bool false | `String "" -> `Bool false
       | `Bool true -> `Bool true
       | `A e -> `List e
+      | `O o -> `Scope (`O o)
       | _ -> raise @@ Invalid_param ("section: invalid key: " ^ key)
 end
 
@@ -167,6 +168,7 @@ let rec render m js =
       elems
       |> List.map ~f:(render contents)
       |> String.concat ~sep:""
+    | `Scope obj -> render contents obj
     end
   | Partial s -> to_string m
   | Concat templates ->

@@ -68,6 +68,11 @@ let mustache_section_list2 _ =
   let vs = [("one","1");("two","2")] in
   assert_equal "one-1two-2" (Mustache.render tmpl @@ js' vs)
 
+let test_scoped _ =
+  let tmpl = Mustache.of_string "{{#item}}{{content}}{{/item}}" in
+  let js = `O [ "item", `O [ "content", `String "internal"] ] in
+  assert_equal "internal" (Mustache.render tmpl js)
+
 let test_html_escape1 _ =
   let html = "<b>foo bar</b>" in
   let escaped = Mustache.escape_html html in
@@ -87,6 +92,7 @@ let suite =
     "bool sections" >:: mustache2;
     "mustache section list 1" >:: mustache_section_list1;
     "mustache section list 2" >:: mustache_section_list2;
+    "object scoped section" >:: test_scoped;
     "test html escaping" >:: test_html_escape1;
     "test sexp conversion" >:: test_sexp_conversion;
   ]
