@@ -2,6 +2,7 @@ default: all
 
 conf-no-tests:
 	oasis setup
+	ocaml setup.ml -configure
 
 configure:
 	oasis setup
