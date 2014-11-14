@@ -1,9 +1,9 @@
 OASISFormat: 0.4
 Name:        mustache
-Version:     0.0.2
+Version:     1.0.0
 Synopsis:    Mustache.js templates in OCaml
 Authors:     Rudi Grinberg
-License:     WTFPL
+License:     MIT
 Plugins:     META (0.4)
 BuildTools: ocamlbuild
 
@@ -11,7 +11,11 @@ Library mustache
   Path:       lib
   BuildTools: ocamlbuild
   Modules:    Mustache
-  BuildDepends: re.str,ezjsonm,sexplib,sexplib.syntax
+  InternalModules: Mustache_types, Mustache_lexer, Mustache_parser
+  BuildDepends: re.str,
+                ezjsonm,
+                sexplib,
+                sexplib.syntax
 
 Test test
   Run$:               flag(tests)
