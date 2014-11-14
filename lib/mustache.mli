@@ -17,7 +17,3 @@ module Infix : sig
 end
 
 val escape_html : string -> string
-
-(** Exported only for testing. Do not use *)
-val tokenize : string -> ('a * string) list
-  -> [> `Text of string | `Token of 'a * string ] list

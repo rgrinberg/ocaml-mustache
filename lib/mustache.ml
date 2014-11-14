@@ -1,25 +1,14 @@
 open Sexplib.Std
 open Printf
 open MoreLabels
+include Mustache_types
+open Mustache_parser
+
 module Str = Re_str
 module List = ListLabels
 module String = StringLabels
 
-exception Invalid_param of string with sexp
-exception Invalid_template of string with sexp
-
-type t =
-  | Iter_var
-  | String of string
-  | Escaped of string
-  | Section of section
-  | Unescaped of string
-  | Partial of string
-  | Concat of t list
-and section = {
-  name: string;
-  contents: t;
-} with sexp
+let (|>) x f = f x
 
 let concat templates = Concat templates
 
@@ -27,77 +16,14 @@ module Infix = struct
   let (^) y x = Concat [x; y]
 end
 
-(* TODO: very inefficient *)
-let tokenize s tokens =
-  let res = tokens |> List.map ~f:(fun (t, re) -> (t, Str.regexp re)) in
-  let re = tokens
-           |> List.map ~f:snd
-           |> String.concat ~sep:"\\|"
-           |> Str.regexp in
-  let open Str in
-  s
-  |> Str.full_split re
-  |> List.map ~f:(function
-    | Text s -> `Text s
-    | Delim s ->
-      let group = ref s in
-      let tag =
-        res
-        |> List.find ~f:(fun (tag, re) ->
-          if Str.string_match re s 0
-          then begin
-            group := Str.matched_group 1 s;
-            true
-          end
-          else false)
-        |> fst
-      in
-      `Token (tag, !group))
-
 (* TODO: rename *)
 let return = function
   | [] -> String ""
   | [x] -> x
   | xs -> Concat xs
 
-let of_string s =
-  let token_table = [
-    (`Iter          , "{{ *\\(\\.\\) *}}"      );
-    (`Escape        , "{{{ *\\([^} ]+\\) *}}}" );
-    (`Escape        , "{{& *\\([^} ]+\\) *}}"  );
-    (`Section_start , "{{# *\\([^} ]+\\) *}}"  );
-    (`Section_end   , "{{/ *\\([^} ]+\\) *}}"  );
-    (`Partial       , "{{> *\\([^} ]+\\) *}}"  );
-    (`Unescape      , "{{ *\\([^} ]+\\) *}}"   );
-  ] in
-  (* TODO: clean the hell up *)
-  let rec parse section_count name acc = function
-    | [] when section_count > 0 ->
-      raise @@ Invalid_template ("Section: " ^ name ^ " is not terminated")
-    | [] -> (List.rev acc, [])
-    | (`Text s)::rest ->
-      parse section_count name ((String s)::acc) rest
-    | (`Token (`Iter, _))::rest ->
-      parse section_count name (Iter_var::acc) rest
-    | (`Token (`Escape, s))::rest ->
-      parse section_count name ((Escaped s)::acc) rest
-    | (`Token (`Section_start, name_))::rest ->
-      let (contents, rest) = parse (succ section_count) name_ [] rest in
-      let section = Section { name=name_; contents=(return contents) } in
-      parse section_count name (section::acc) rest
-    | (`Token (`Section_end, section))::rest when section=name ->
-      (List.rev acc, rest)
-    | (`Token (`Section_end, section))::rest ->
-      raise @@ Invalid_template ("Mismatched section: " ^ section)
-    | (`Token (`Unescape, s))::rest ->
-      parse section_count name ((Unescaped s)::acc) rest
-    | (`Token (`Partial, s))::rest ->
-      parse section_count name ((Partial s)::acc) rest
-  in
-  let tokens = tokenize s token_table in
-  match parse 0 "" [] tokens with
-  | templates, [] -> return templates
-  | _, _::_ -> assert false
+let parse_lx = Mustache_parser.mustache Mustache_lexer.mustache
+let of_string s = s |> Lexing.from_string |> parse_lx
 
 let escape_table = [
   ("&", "&amp;");
