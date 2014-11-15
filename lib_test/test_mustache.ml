@@ -16,10 +16,7 @@ let string_printer x = x
 let mustache1 _ =
   let s = "Hello {{ name }}!" in
   let tmpl = Mustache.of_string s in
-  printf "Hello tmplate: %s\n" (mustache_printer tmpl);
-  (* printf "tmpl parsed: %s\n" (Mustache.to_string tmpl); *)
   let js = `O ["name", `String "testing"] in
-  (* printf "Rendered: %s\n" (Mustache.render tmpl js); *)
   assert_equal ~printer:string_printer "Hello testing!" (Mustache.render tmpl js)
 
 let mustache2 _ =
@@ -69,14 +66,12 @@ let test_sexp_conversion _ =
 
 let suite =
   "test mustache" >:::
-  [
-    "mustache1" >:: mustache1;
-    "bool sections" >:: mustache2;
-    "mustache section list 1" >:: mustache_section_list1;
-    "mustache section list 2" >:: mustache_section_list2;
-    "object scoped section" >:: test_scoped;
-    "test html escaping" >:: test_html_escape1;
-    "test sexp conversion" >:: test_sexp_conversion;
-  ]
+  [ "mustache1"               >:: mustache1
+  ; "bool sections"           >:: mustache2
+  ; "mustache section list 1" >:: mustache_section_list1
+  ; "mustache section list 2" >:: mustache_section_list2
+  ; "object scoped section"   >:: test_scoped
+  ; "test html escaping"      >:: test_html_escape1
+  ; "test sexp conversion"    >:: test_sexp_conversion ]
 
 let () = run_test_tt_main suite
