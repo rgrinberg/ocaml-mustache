@@ -57,19 +57,19 @@ module Lookup = struct
     | `Null | `Bool _ -> Ezjsonm.to_string x
     | `Float f -> string_of_float f
     | `String s -> s
-    | `A _ | `O _ -> raise @@ Invalid_param "Lookup.scalar: not a scalar"
+    | `A _ | `O _ -> raise (Invalid_param "Lookup.scalar: not a scalar")
 
   let str (js : Ezjsonm.t) ~key =
     match js with
     | `Null | `Float _ | `Bool _
-    | `String _ | `A _ -> raise @@ Invalid_param ("str. not an object")
+    | `String _ | `A _ -> raise (Invalid_param ("str. not an object"))
     | `O assoc ->
       assoc |> List.assoc key |> scalar
 
   let section (js : Ezjsonm.t) ~key =
     match js with
     | `Null | `Float _ | `A _
-    | `Bool _ | `String _ -> raise @@ Invalid_param ("section: " ^ key)
+    | `Bool _ | `String _ -> raise (Invalid_param ("section: " ^ key))
     | `O elems ->
       match List.assoc key elems with
       (* php casting *)
@@ -77,7 +77,7 @@ module Lookup = struct
       | `Bool true -> `Bool true
       | `A e -> `List e
       | `O o -> `Scope (`O o)
-      | _ -> raise @@ Invalid_param ("section: invalid key: " ^ key)
+      | _ -> raise (Invalid_param ("section: invalid key: " ^ key))
 end
 
 let rec render m js =
