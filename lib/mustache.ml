@@ -44,6 +44,8 @@ let rec to_string = function
   | String s -> s
   | Escaped s -> sprintf "{{ %s }}" s
   | Unescaped s -> sprintf "{{& %s }}" s
+  | Inverted_section { name; contents } ->
+    sprintf "{{^ %s }}%s{{/%s}}" name (to_string contents) name
   | Section { name; contents } ->
     sprintf "{{# %s }}%s{{/%s}}" name (to_string contents) name
   | Partial s -> sprintf "{{> %s }}" s
@@ -78,6 +80,15 @@ module Lookup = struct
       | `A e -> `List e
       | `O o -> `Scope (`O o)
       | _ -> raise (Invalid_param ("section: invalid key: " ^ key))
+
+  let inverted (js : Ezjsonm.t) ~key =
+    match js with
+    | `Null
+    | `Bool false
+    | `A [] -> true
+    | `O map -> not (List.mem_assoc ~map key)
+    | _ -> false
+
 end
 
 let rec render m js =
@@ -86,6 +97,9 @@ let rec render m js =
   | String s -> s
   | Escaped key -> js |> Lookup.str ~key
   | Unescaped key -> js |> Lookup.str ~key
+  | Inverted_section ({ name=key; _ } as sec) when Lookup.inverted js ~key ->
+    render (Section sec) js
+  | Inverted_section _ -> ""
   | Section { name=key; contents } ->
     begin match js |> Lookup.section ~key with
     | `Bool false -> ""
