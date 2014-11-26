@@ -7,7 +7,7 @@ type t =
   | Section of section
   | Unescaped of string
   | Partial of string
-  | Inverted_section of string
+  | Inverted_section of section
   | Concat of t list
 and section = {
   name: string;
