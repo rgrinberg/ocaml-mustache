@@ -58,6 +58,11 @@ let test_html_escape1 _ =
   let escaped = Mustache.escape_html html in
   assert_equal ~printer:(fun s -> s) "&lt;b&gt;foo bar&lt;/b&gt;" escaped
 
+let test_single_braces _ =
+  let tmpl = Mustache.of_string "<style>div { border: {{border}}; }</style>" in
+  let js = `O [ "border", `String "solid"] in
+  assert_equal "<style>div { border: solid; }</style>" (Mustache.render tmpl js)
+
 let test_sexp_conversion _ =
   let s = Mustache.of_string "Hello {{ name }}" in
   let s = s |> Mustache.sexp_of_t |> Sexplib.Sexp.to_string in
@@ -72,6 +77,7 @@ let suite =
   ; "mustache section list 2" >:: mustache_section_list2
   ; "object scoped section"   >:: test_scoped
   ; "test html escaping"      >:: test_html_escape1
+  ; "test single braces"      >:: test_single_braces
   ; "test sexp conversion"    >:: test_sexp_conversion ]
 
 let () = run_test_tt_main suite
