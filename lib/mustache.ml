@@ -56,19 +56,20 @@ let rec to_string = function
 module Lookup = struct
   let scalar x =
     match x with
-    | `Null | `Bool _ -> Ezjsonm.to_string x
+    | `Null -> "null"
+    | `Bool v -> if v then "true" else "false"
     | `Float f -> string_of_float f
     | `String s -> s
     | `A _ | `O _ -> raise (Invalid_param "Lookup.scalar: not a scalar")
 
-  let str (js : Ezjsonm.t) ~key =
+  let str (js : Ezjsonm.value) ~key =
     match js with
     | `Null | `Float _ | `Bool _
     | `String _ | `A _ -> raise (Invalid_param ("str. not an object"))
     | `O assoc ->
       assoc |> List.assoc key |> scalar
 
-  let section (js : Ezjsonm.t) ~key =
+  let section (js : Ezjsonm.value) ~key =
     match js with
     | `Null | `Float _ | `A _
     | `Bool _ | `String _ -> raise (Invalid_param ("section: " ^ key))
@@ -81,7 +82,7 @@ module Lookup = struct
       | `O o -> `Scope (`O o)
       | _ -> raise (Invalid_param ("section: invalid key: " ^ key))
 
-  let inverted (js : Ezjsonm.t) ~key =
+  let inverted (js : Ezjsonm.value) ~key =
     match js with
     | `Null
     | `Bool false
@@ -91,27 +92,29 @@ module Lookup = struct
 
 end
 
-let rec render m js =
-  match m with
-  | Iter_var -> js |> Lookup.scalar
-  | String s -> s
-  | Escaped key -> js |> Lookup.str ~key
-  | Unescaped key -> js |> Lookup.str ~key
-  | Inverted_section ({ name=key; _ } as sec) when Lookup.inverted js ~key ->
-    render (Section sec) js
-  | Inverted_section _ -> ""
-  | Section { name=key; contents } ->
-    begin match js |> Lookup.section ~key with
-    | `Bool false -> ""
-    | `Bool true -> render contents js
-    | `List elems ->
-      elems
-      |> List.map ~f:(render contents)
+let render m (js : Ezjsonm.t) =
+  let rec render' m (js : Ezjsonm.value) =
+    match m with
+    | Iter_var -> js |> Lookup.scalar
+    | String s -> s
+    | Escaped key -> js |> Lookup.str ~key
+    | Unescaped key -> js |> Lookup.str ~key
+    | Inverted_section ({ name=key; _ } as sec) when Lookup.inverted js ~key ->
+      render' (Section sec) js
+    | Inverted_section _ -> ""
+    | Section { name=key; contents } ->
+      begin match js |> Lookup.section ~key with
+      | `Bool false -> ""
+      | `Bool true -> render' contents js
+      | `List elems ->
+        elems
+        |> List.map ~f:(render' contents)
+        |> String.concat ~sep:""
+      | `Scope obj -> render' contents obj
+      end
+    | Partial s -> to_string m
+    | Concat templates ->
+      templates
+      |> List.map ~f:(fun tmpl -> render' tmpl js)
       |> String.concat ~sep:""
-    | `Scope obj -> render contents obj
-    end
-  | Partial s -> to_string m
-  | Concat templates ->
-    templates
-    |> List.map ~f:(fun tmpl -> render tmpl js)
-    |> String.concat ~sep:""
+  in js |> Ezjsonm.value |> render' m
