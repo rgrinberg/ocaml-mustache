@@ -1,2 +1,0 @@
-#!/bin/sh
-opam install -y ezjsonm re sexplib oasis ounit
