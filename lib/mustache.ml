@@ -116,7 +116,7 @@ let render_fmt (fmt : Format.formatter) (m : t) (js : Ezjsonm.t) =
        Format.pp_print_string fmt s
 
     | Escaped key ->
-       Format.pp_print_string fmt (Lookup.str ~key js)
+       Format.pp_print_string fmt (escape_html (Lookup.str ~key js))
 
     | Unescaped key ->
        Format.pp_print_string fmt (Lookup.str ~key js)
