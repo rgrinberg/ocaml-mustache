@@ -63,6 +63,7 @@ let to_string x =
   let b = Buffer.create 0 in
   let fmt = Format.formatter_of_buffer b in
   to_formatter fmt x ;
+  Format.pp_print_flush fmt () ;
   Buffer.contents b
 
 module Lookup = struct
@@ -106,8 +107,7 @@ end
 
 let render_fmt (fmt : Format.formatter) (m : t) (js : Ezjsonm.t) =
 
-  let rec render' m (js : Ezjsonm.value) =
-    match m with
+  let rec render' m (js : Ezjsonm.value) = match m with
 
     | Iter_var ->
        Format.pp_print_string fmt (Lookup.scalar js)
@@ -145,4 +145,5 @@ let render (m : t) (js : Ezjsonm.t) =
   let b = Buffer.create 0 in
   let fmt = Format.formatter_of_buffer b in
   render_fmt fmt m js ;
+  Format.pp_print_flush fmt () ;
   Buffer.contents b
