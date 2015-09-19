@@ -15,12 +15,6 @@ module Infix = struct
   let (^) y x = Concat [x; y]
 end
 
-(* TODO: rename *)
-let return = function
-  | [] -> String ""
-  | [x] -> x
-  | xs -> Concat xs
-
 let parse_lx = Mustache_parser.mustache Mustache_lexer.mustache
 let of_string s = s |> Lexing.from_string |> parse_lx
 
