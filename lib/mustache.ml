@@ -30,19 +30,40 @@ let escape_html s =
               ) s ;
   Buffer.contents b
 
-let rec to_string = function
-  | Iter_var -> "{{.}}"
-  | String s -> s
-  | Escaped s -> sprintf "{{ %s }}" s
-  | Unescaped s -> sprintf "{{& %s }}" s
-  | Inverted_section { name; contents } ->
-    sprintf "{{^ %s }}%s{{/%s}}" name (to_string contents) name
-  | Section { name; contents } ->
-    sprintf "{{# %s }}%s{{/%s}}" name (to_string contents) name
-  | Partial s -> sprintf "{{> %s }}" s
-  | Concat s -> s
-                |> List.map ~f:to_string
-                |> String.concat ~sep:""
+let rec to_formatter fmt = function
+
+  | Iter_var ->
+     Format.pp_print_string fmt "{{.}}"
+
+  | String s ->
+     Format.pp_print_string fmt s
+
+  | Escaped s ->
+     Format.fprintf fmt "{{ %s }}" s
+
+  | Unescaped s ->
+     Format.fprintf fmt "{{& %s }}" s
+
+  | Inverted_section s ->
+     Format.fprintf fmt "{{^%s}}%a{{/%s}}"
+                    s.name to_formatter s.contents s.name
+
+  | Section s ->
+     Format.fprintf fmt "{{#%s}}%a{{/%s}}"
+                    s.name to_formatter s.contents s.name
+
+  | Partial s ->
+     Format.fprintf fmt "{{> %s }}" s
+
+  | Concat s ->
+     List.iter (to_formatter fmt) s
+
+(** Ensure backward compatibility *)
+let to_string x =
+  let b = Buffer.create 0 in
+  let fmt = Format.formatter_of_buffer b in
+  to_formatter fmt x ;
+  Buffer.contents b
 
 module Lookup = struct
   let scalar x =
@@ -83,29 +104,45 @@ module Lookup = struct
 
 end
 
-let render m (js : Ezjsonm.t) =
+let render_fmt (fmt : Format.formatter) (m : t) (js : Ezjsonm.t) =
+
   let rec render' m (js : Ezjsonm.value) =
     match m with
-    | Iter_var -> js |> Lookup.scalar
-    | String s -> s
-    | Escaped key -> js |> Lookup.str ~key
-    | Unescaped key -> js |> Lookup.str ~key
-    | Inverted_section ({ name=key; _ } as sec) when Lookup.inverted js ~key ->
-      render' (Section sec) js
-    | Inverted_section _ -> ""
-    | Section { name=key; contents } ->
-      begin match js |> Lookup.section ~key with
-      | `Bool false -> ""
-      | `Bool true -> render' contents js
-      | `List elems ->
-        elems
-        |> List.map ~f:(render' contents)
-        |> String.concat ~sep:""
-      | `Scope obj -> render' contents obj
+
+    | Iter_var ->
+       Format.pp_print_string fmt (Lookup.scalar js)
+
+    | String s ->
+       Format.pp_print_string fmt s
+
+    | Escaped key ->
+       Format.pp_print_string fmt (Lookup.str ~key js)
+
+    | Unescaped key ->
+       Format.pp_print_string fmt (Lookup.str ~key js)
+
+    | Inverted_section s ->
+       if Lookup.inverted js s.name
+       then render' (Section s) js
+
+    | Section s ->
+      begin match Lookup.section js s.name with
+      | `Bool false -> ()
+      | `Bool true -> render' s.contents js
+      | `List elems -> List.iter (render' s.contents) elems
+      | `Scope obj -> render' s.contents obj
       end
-    | Partial s -> to_string m
+
+    | Partial _ ->
+       to_formatter fmt m
+
     | Concat templates ->
-      templates
-      |> List.map ~f:(fun tmpl -> render' tmpl js)
-      |> String.concat ~sep:""
-  in js |> Ezjsonm.value |> render' m
+       List.iter (fun x -> render' x js) templates
+
+  in render' m (Ezjsonm.value js)
+
+let render (m : t) (js : Ezjsonm.t) =
+  let b = Buffer.create 0 in
+  let fmt = Format.formatter_of_buffer b in
+  render_fmt fmt m js ;
+  Buffer.contents b

@@ -6,7 +6,11 @@ type t with sexp
 
 val parse_lx : Lexing.lexbuf -> t
 val of_string : string -> t
+
+val to_formatter : Format.formatter -> t -> unit
 val to_string : t -> string
+
+val render_fmt : Format.formatter -> t -> Ezjsonm.t -> unit
 val render : t -> Ezjsonm.t -> string
 
 (** Concatenate a list of mustache templates. Faster than concatenating
