@@ -4,6 +4,7 @@ exception Invalid_template of string with sexp
 
 type t with sexp
 
+val parse_lx : Lexing.lexbuf -> t
 val of_string : string -> t
 val to_string : t -> string
 val render : t -> Ezjsonm.t -> string
