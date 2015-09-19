@@ -4,7 +4,6 @@ open MoreLabels
 include Mustache_types
 open Mustache_parser
 
-module Str = Re_str
 module List = ListLabels
 module String = StringLabels
 
@@ -25,19 +24,17 @@ let return = function
 let parse_lx = Mustache_parser.mustache Mustache_lexer.mustache
 let of_string s = s |> Lexing.from_string |> parse_lx
 
-let escape_table = [
-  ("&", "&amp;");
-  ("\"", "&quot;");
-  ("'", "&apos;");
-  (">", "&gt;");
-  ("<", "&lt;");
-] |> List.map ~f:(fun (re, v) -> (Str.regexp_string re, v))
-
-let escape_html init =
-  List.fold_left ~f:(fun s (search, replace) ->
-    Str.global_replace search replace s
-  ) ~init escape_table
-
+let escape_html s =
+  let b = Buffer.create (String.length s) in
+  String.iter ( function
+                | '&'  -> Buffer.add_string b "&amp;"
+                | '"'  -> Buffer.add_string b "&quot;"
+                | '\'' -> Buffer.add_string b "&apos;"
+                | '>'  -> Buffer.add_string b "&gt;"
+                | '<'  -> Buffer.add_string b "&lt;"
+                | c    -> Buffer.add_char b c
+              ) s ;
+  Buffer.contents b
 
 let rec to_string = function
   | Iter_var -> "{{.}}"
