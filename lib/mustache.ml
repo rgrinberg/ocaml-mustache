@@ -1,8 +1,5 @@
-open Sexplib.Std
-open Printf
 open MoreLabels
 include Mustache_types
-open Mustache_parser
 
 module List = ListLabels
 module String = StringLabels

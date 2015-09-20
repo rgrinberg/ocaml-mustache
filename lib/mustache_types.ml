@@ -16,4 +16,3 @@ and section = {
 
 exception Invalid_param of string with sexp
 exception Invalid_template of string with sexp
-
