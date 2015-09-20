@@ -53,6 +53,17 @@ let tests = [
                raw ".</h1>" ]
     , [ (`O [], "<h1>Today.</h1>") ] );
 
+    ("{{ foo }}\
+      {{{ foo }}}\
+      {{& foo }}"
+    , concat [ escaped "foo" ;
+               unescaped "foo" ;
+               unescaped "foo" ]
+    , [ (`O [ "foo", `String "<b>bar</b>"],
+         "&lt;b&gt;bar&lt;/b&gt;\
+          <b>bar</b>\
+          <b>bar</b>" ) ] ) ;
+
   ]
 
 let () =

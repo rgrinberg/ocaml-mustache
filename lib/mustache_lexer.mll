@@ -21,7 +21,8 @@ and mustache = parse
   | "{{>"        { PARTIAL_START (ident lexbuf) }
   | "{{!"        { COMMENT_START }
   | "{{"         { ESCAPE_START (ident lexbuf) }
-  | space "}}"   { END }
+  | "}}}"        { UNESCAPE_END }
+  | "}}"         { END }
   | [^ '{' '}']* { RAW (lexeme lexbuf) }
   | ['{' '}']    { RAW (lexeme lexbuf) }
   | eof          { EOF }
