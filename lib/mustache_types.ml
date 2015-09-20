@@ -9,6 +9,7 @@ type t =
   | Partial of string
   | Inverted_section of section
   | Concat of t list
+  | Comment of string
 and section = {
   name: string;
   contents: t;
@@ -16,4 +17,3 @@ and section = {
 
 exception Invalid_param of string with sexp
 exception Invalid_template of string with sexp
-

@@ -9,7 +9,7 @@ let id = ['a'-'z' 'A'-'Z' '_'] ['a'-'z' 'A'-'Z' '0'-'9' '_']+
 
 rule ident = parse
   | space '.' space { "." }
-  | space id space { String.trim (lexeme lexbuf) }
+  | space (id as x) space { x }
   | _ { raise (Invalid_template "Invalid section") }
 
 and mustache = parse
@@ -19,8 +19,10 @@ and mustache = parse
   | "{{^"        { SECTION_INVERT_START (ident lexbuf) }
   | "{{/"        { SECTION_END (ident lexbuf) }
   | "{{>"        { PARTIAL_START (ident lexbuf) }
+  | "{{!"        { COMMENT_START }
   | "{{"         { ESCAPE_START (ident lexbuf) }
-  | space "}}"   { END }
+  | "}}}"        { UNESCAPE_END }
+  | "}}"         { END }
   | [^ '{' '}']* { RAW (lexeme lexbuf) }
   | ['{' '}']    { RAW (lexeme lexbuf) }
   | eof          { EOF }

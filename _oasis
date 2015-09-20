@@ -12,8 +12,7 @@ Library mustache
   BuildTools: ocamlbuild
   Modules:    Mustache
   InternalModules: Mustache_types, Mustache_lexer, Mustache_parser
-  BuildDepends: re.str,
-                ezjsonm,
+  BuildDepends: ezjsonm,
                 sexplib,
                 sexplib.syntax
 
@@ -39,4 +38,3 @@ Executable mustache_cli
   CompiledObject:     best
   Install:            false
   BuildDepends:       mustache
-

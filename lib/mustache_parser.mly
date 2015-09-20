@@ -12,17 +12,16 @@
 %token EOF
 %token END
 %token <string> ESCAPE_START
-%token ESCAPE_END
 %token <string> UNESCAPE_START_AMPERSAND
 %token <string> SECTION_INVERT_START
 %token <string> SECTION_START
 %token <string> SECTION_END
 %token <string> PARTIAL_START
 %token <string> UNESCAPE_START
+%token COMMENT_START
 %token UNESCAPE_END
 
 %token <string> RAW
-%token DOT
 
 %start mustache
 %type <Mustache_types.t> mustache
@@ -35,9 +34,10 @@ section:
 
 mustache_element:
   | UNESCAPE_START UNESCAPE_END { Unescaped $1 }
-  | UNESCAPE_START_AMPERSAND ESCAPE_END { Unescaped $1 }
+  | UNESCAPE_START_AMPERSAND END { Unescaped $1 }
   | ESCAPE_START END { if $1 = "." then Iter_var else Escaped $1 }
   | PARTIAL_START END { Partial $1 }
+  | COMMENT_START RAW END { Comment $2 }
   | section { $1 }
 
 string:
