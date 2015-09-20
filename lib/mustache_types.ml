@@ -9,6 +9,7 @@ type t =
   | Partial of string
   | Inverted_section of section
   | Concat of t list
+  | Comment of string
 and section = {
   name: string;
   contents: t;

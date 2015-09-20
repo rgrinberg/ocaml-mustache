@@ -19,6 +19,7 @@
 %token <string> SECTION_END
 %token <string> PARTIAL_START
 %token <string> UNESCAPE_START
+%token COMMENT_START
 %token UNESCAPE_END
 
 %token <string> RAW
@@ -38,6 +39,7 @@ mustache_element:
   | UNESCAPE_START_AMPERSAND ESCAPE_END { Unescaped $1 }
   | ESCAPE_START END { if $1 = "." then Iter_var else Escaped $1 }
   | PARTIAL_START END { Partial $1 }
+  | COMMENT_START RAW END { Comment $2 }
   | section { $1 }
 
 string:

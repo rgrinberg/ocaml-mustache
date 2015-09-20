@@ -48,6 +48,9 @@ let rec to_formatter fmt = function
   | Partial s ->
      Format.fprintf fmt "{{> %s }}" s
 
+  | Comment s ->
+     Format.fprintf fmt "{{! %s }}" s
+
   | Concat s ->
      List.iter (to_formatter fmt) s
 
@@ -127,6 +130,8 @@ let render_fmt (fmt : Format.formatter) (m : t) (js : Ezjsonm.t) =
     | Partial _ ->
        to_formatter fmt m
 
+    | Comment c -> ()
+
     | Concat templates ->
        List.iter (fun x -> render' x js) templates
 
@@ -147,3 +152,4 @@ let section n c = Section { name = n ; contents = c }
 let inverted_section n c = Inverted_section { name = n ; contents = c }
 let partial s = Partial s
 let concat t = Concat t
+let comment s = Comment s

@@ -19,6 +19,7 @@ and mustache = parse
   | "{{^"        { SECTION_INVERT_START (ident lexbuf) }
   | "{{/"        { SECTION_END (ident lexbuf) }
   | "{{>"        { PARTIAL_START (ident lexbuf) }
+  | "{{!"        { COMMENT_START }
   | "{{"         { ESCAPE_START (ident lexbuf) }
   | space "}}"   { END }
   | [^ '{' '}']* { RAW (lexeme lexbuf) }

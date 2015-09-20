@@ -54,5 +54,8 @@ val section : string -> t -> t
 (** [{{> box}}] *)
 val partial : string -> t
 
+(** [{{! this is a comment}}] *)
+val comment : string -> t
+
 (** Group a [t list] as a single [t]. *)
 val concat : t list -> t

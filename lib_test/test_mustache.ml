@@ -47,6 +47,12 @@ let tests = [
     , [ ( `O [ "border", `String "solid"],
           "<style>div { border: solid; }</style>" ) ] ) ;
 
+    ( "<h1>Today{{! ignore me }}.</h1>"
+    , concat [ raw "<h1>Today" ;
+               comment " ignore me " ;
+               raw ".</h1>" ]
+    , [ (`O [], "<h1>Today.</h1>") ] );
+
   ]
 
 let () =
