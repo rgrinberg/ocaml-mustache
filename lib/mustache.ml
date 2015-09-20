@@ -7,16 +7,12 @@ open Mustache_parser
 module List = ListLabels
 module String = StringLabels
 
-let (|>) x f = f x
-
-let concat templates = Concat templates
-
 module Infix = struct
   let (^) y x = Concat [x; y]
 end
 
 let parse_lx = Mustache_parser.mustache Mustache_lexer.mustache
-let of_string s = s |> Lexing.from_string |> parse_lx
+let of_string s = parse_lx (Lexing.from_string s)
 
 let escape_html s =
   let b = Buffer.create (String.length s) in
@@ -58,7 +54,6 @@ let rec to_formatter fmt = function
   | Concat s ->
      List.iter (to_formatter fmt) s
 
-(** Ensure backward compatibility *)
 let to_string x =
   let b = Buffer.create 0 in
   let fmt = Format.formatter_of_buffer b in
@@ -79,21 +74,20 @@ module Lookup = struct
     match js with
     | `Null | `Float _ | `Bool _
     | `String _ | `A _ -> raise (Invalid_param ("str. not an object"))
-    | `O assoc ->
-      assoc |> List.assoc key |> scalar
+    | `O assoc -> scalar (List.assoc key assoc)
 
   let section (js : Ezjsonm.value) ~key =
     match js with
     | `Null | `Float _ | `A _
     | `Bool _ | `String _ -> raise (Invalid_param ("section: " ^ key))
     | `O elems ->
-      match List.assoc key elems with
-      (* php casting *)
-      | `Null | `Float _ | `Bool false | `String "" -> `Bool false
-      | `Bool true -> `Bool true
-      | `A e -> `List e
-      | `O o -> `Scope (`O o)
-      | _ -> raise (Invalid_param ("section: invalid key: " ^ key))
+       match List.assoc key elems with
+       (* php casting *)
+       | `Null | `Float _ | `Bool false | `String "" -> `Bool false
+       | `Bool true -> `Bool true
+       | `A e -> `List e
+       | `O o -> `Scope (`O o)
+       | _ -> raise (Invalid_param ("section: invalid key: " ^ key))
 
   let inverted (js : Ezjsonm.value) ~key =
     match js with
@@ -126,12 +120,12 @@ let render_fmt (fmt : Format.formatter) (m : t) (js : Ezjsonm.t) =
        then render' (Section s) js
 
     | Section s ->
-      begin match Lookup.section js s.name with
-      | `Bool false -> ()
-      | `Bool true -> render' s.contents js
-      | `List elems -> List.iter (render' s.contents) elems
-      | `Scope obj -> render' s.contents obj
-      end
+       begin match Lookup.section js s.name with
+             | `Bool false -> ()
+             | `Bool true -> render' s.contents js
+             | `List elems -> List.iter (render' s.contents) elems
+             | `Scope obj -> render' s.contents obj
+       end
 
     | Partial _ ->
        to_formatter fmt m
@@ -147,3 +141,12 @@ let render (m : t) (js : Ezjsonm.t) =
   render_fmt fmt m js ;
   Format.pp_print_flush fmt () ;
   Buffer.contents b
+
+let iter_var = Iter_var
+let raw s = String s
+let escaped s = Escaped s
+let unescaped s = Unescaped s
+let section n c = Section { name = n ; contents = c }
+let inverted_section n c = Inverted_section { name = n ; contents = c }
+let partial s = Partial s
+let concat t = Concat t
