@@ -31,7 +31,6 @@ depends: [
   "ocamlfind" {build}
   "oasis" {build & >= "0.4.0"}
   "ezjsonm" {>= "0.4.0"}
-  "sexplib"
   "re"
 ]
 
