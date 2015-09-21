@@ -1,11 +1,7 @@
-PRJ mustache
 PKG ezjsonm
-PKG re
 PKG oUnit
-PKG sexplib
-PKG sexplib.syntax
+
 S lib
 S lib_test
-B _build
-B _build/lib
-B _build/lib_test
+
+B _build/**

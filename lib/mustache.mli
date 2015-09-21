@@ -1,8 +1,8 @@
 (** A module for creating and rendering mustache templates in OCaml. *)
-exception Invalid_param of string with sexp
-exception Invalid_template of string with sexp
+exception Invalid_param of string
+exception Invalid_template of string
 
-type t with sexp
+type t
 
 (** Read *)
 val parse_lx : Lexing.lexbuf -> t
