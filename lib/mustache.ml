@@ -78,10 +78,10 @@ let to_string x =
   Buffer.contents b
 
 module Lookup = struct
-  let scalar x =
-    match x with
+  let scalar = function
     | `Null -> "null"
-    | `Bool v -> if v then "true" else "false"
+    | `Bool true -> "true"
+    | `Bool false -> "false"
     | `Float f -> string_of_float f
     | `String s -> s
     | `A _ | `O _ -> raise (Invalid_param "Lookup.scalar: not a scalar")
