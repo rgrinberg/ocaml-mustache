@@ -14,45 +14,45 @@ let of_string s = parse_lx (Lexing.from_string s)
 let escape_html s =
   let b = Buffer.create (String.length s) in
   String.iter ( function
-                | '&'  -> Buffer.add_string b "&amp;"
-                | '"'  -> Buffer.add_string b "&quot;"
-                | '\'' -> Buffer.add_string b "&apos;"
-                | '>'  -> Buffer.add_string b "&gt;"
-                | '<'  -> Buffer.add_string b "&lt;"
-                | c    -> Buffer.add_char b c
-              ) s ;
+    | '&'  -> Buffer.add_string b "&amp;"
+    | '"'  -> Buffer.add_string b "&quot;"
+    | '\'' -> Buffer.add_string b "&apos;"
+    | '>'  -> Buffer.add_string b "&gt;"
+    | '<'  -> Buffer.add_string b "&lt;"
+    | c    -> Buffer.add_char b c
+  ) s ;
   Buffer.contents b
 
 let rec to_formatter fmt = function
 
   | Iter_var ->
-     Format.pp_print_string fmt "{{.}}"
+    Format.pp_print_string fmt "{{.}}"
 
   | String s ->
-     Format.pp_print_string fmt s
+    Format.pp_print_string fmt s
 
   | Escaped s ->
-     Format.fprintf fmt "{{ %s }}" s
+    Format.fprintf fmt "{{ %s }}" s
 
   | Unescaped s ->
-     Format.fprintf fmt "{{& %s }}" s
+    Format.fprintf fmt "{{& %s }}" s
 
   | Inverted_section s ->
-     Format.fprintf fmt "{{^%s}}%a{{/%s}}"
-                    s.name to_formatter s.contents s.name
+    Format.fprintf fmt "{{^%s}}%a{{/%s}}"
+      s.name to_formatter s.contents s.name
 
   | Section s ->
-     Format.fprintf fmt "{{#%s}}%a{{/%s}}"
-                    s.name to_formatter s.contents s.name
+    Format.fprintf fmt "{{#%s}}%a{{/%s}}"
+      s.name to_formatter s.contents s.name
 
   | Partial s ->
-     Format.fprintf fmt "{{> %s }}" s
+    Format.fprintf fmt "{{> %s }}" s
 
   | Comment s ->
-     Format.fprintf fmt "{{! %s }}" s
+    Format.fprintf fmt "{{! %s }}" s
 
   | Concat s ->
-     List.iter (to_formatter fmt) s
+    List.iter (to_formatter fmt) s
 
 let to_string x =
   let b = Buffer.create 0 in
@@ -81,13 +81,13 @@ module Lookup = struct
     | `Null | `Float _ | `A _
     | `Bool _ | `String _ -> raise (Invalid_param ("section: " ^ key))
     | `O elems ->
-       match List.assoc key elems with
-       (* php casting *)
-       | `Null | `Float _ | `Bool false | `String "" -> `Bool false
-       | `Bool true -> `Bool true
-       | `A e -> `List e
-       | `O o -> `Scope (`O o)
-       | _ -> raise (Invalid_param ("section: invalid key: " ^ key))
+      match List.assoc key elems with
+      (* php casting *)
+      | `Null | `Float _ | `Bool false | `String "" -> `Bool false
+      | `Bool true -> `Bool true
+      | `A e -> `List e
+      | `O o -> `Scope (`O o)
+      | _ -> raise (Invalid_param ("section: invalid key: " ^ key))
 
   let inverted (js : Ezjsonm.value) ~key =
     match js with
@@ -104,36 +104,36 @@ let render_fmt (fmt : Format.formatter) (m : t) (js : Ezjsonm.t) =
   let rec render' m (js : Ezjsonm.value) = match m with
 
     | Iter_var ->
-       Format.pp_print_string fmt (Lookup.scalar js)
+      Format.pp_print_string fmt (Lookup.scalar js)
 
     | String s ->
-       Format.pp_print_string fmt s
+      Format.pp_print_string fmt s
 
     | Escaped key ->
-       Format.pp_print_string fmt (escape_html (Lookup.str ~key js))
+      Format.pp_print_string fmt (escape_html (Lookup.str ~key js))
 
     | Unescaped key ->
-       Format.pp_print_string fmt (Lookup.str ~key js)
+      Format.pp_print_string fmt (Lookup.str ~key js)
 
     | Inverted_section s ->
-       if Lookup.inverted js s.name
-       then render' (Section s) js
+      if Lookup.inverted js s.name
+      then render' (Section s) js
 
     | Section s ->
-       begin match Lookup.section js s.name with
-             | `Bool false -> ()
-             | `Bool true -> render' s.contents js
-             | `List elems -> List.iter (render' s.contents) elems
-             | `Scope obj -> render' s.contents obj
-       end
+      begin match Lookup.section js s.name with
+      | `Bool false -> ()
+      | `Bool true -> render' s.contents js
+      | `List elems -> List.iter (render' s.contents) elems
+      | `Scope obj -> render' s.contents obj
+      end
 
     | Partial _ ->
-       to_formatter fmt m
+      to_formatter fmt m
 
     | Comment c -> ()
 
     | Concat templates ->
-       List.iter (fun x -> render' x js) templates
+      List.iter (fun x -> render' x js) templates
 
   in render' m (Ezjsonm.value js)
 

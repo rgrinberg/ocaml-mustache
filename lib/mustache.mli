@@ -13,7 +13,7 @@ val of_string : string -> t
 val to_formatter : Format.formatter -> t -> unit
 
 (** [to_string template] uses [to_formatter] in order to return
-     a string representing the template as raw mustache.  *)
+    a string representing the template as raw mustache.  *)
 val to_string : t -> string
 
 (** [render_fmt fmt template json] render [template], filling it
