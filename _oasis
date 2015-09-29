@@ -12,7 +12,10 @@ Library mustache
   BuildTools: ocamlbuild
   Modules:    Mustache
   InternalModules: Mustache_types, Mustache_lexer, Mustache_parser
-  BuildDepends: ezjsonm
+
+Flag cli
+  Description: enable compilation of cli utility
+  Default: true
 
 Test test
   Run$:               flag(tests)
@@ -31,8 +34,8 @@ Executable test_mustache
 Executable mustache_cli
   Path:               lib_test
   MainIs:             mustache_cli.ml
-  Build$:             flag(tests)
+  Build$:             flag(cli)
   Custom:             true
   CompiledObject:     best
   Install:            false
-  BuildDepends:       mustache
+  BuildDepends:       mustache, ezjsonm

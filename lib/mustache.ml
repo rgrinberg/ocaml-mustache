@@ -8,6 +8,22 @@ module Infix = struct
   let (^) y x = Concat [x; y]
 end
 
+module Json = struct
+  type value =
+    [ `Null
+    | `Bool of bool
+    | `Float of float
+    | `String of string
+    | `A of value list
+    | `O of (string * value) list ]
+
+  type t =
+    [ `A of value list
+    | `O of (string * value) list ]
+
+  let value: t -> value = fun t -> (t :> value)
+end
+
 let parse_lx = Mustache_parser.mustache Mustache_lexer.mustache
 let of_string s = parse_lx (Lexing.from_string s)
 
@@ -70,13 +86,13 @@ module Lookup = struct
     | `String s -> s
     | `A _ | `O _ -> raise (Invalid_param "Lookup.scalar: not a scalar")
 
-  let str (js : Ezjsonm.value) ~key =
+  let str (js : Json.value) ~key =
     match js with
     | `Null | `Float _ | `Bool _
     | `String _ | `A _ -> raise (Invalid_param ("str. not an object"))
     | `O assoc -> scalar (List.assoc key assoc)
 
-  let section (js : Ezjsonm.value) ~key =
+  let section (js : Json.value) ~key =
     match js with
     | `Null | `Float _ | `A _
     | `Bool _ | `String _ -> raise (Invalid_param ("section: " ^ key))
@@ -89,7 +105,7 @@ module Lookup = struct
       | `O o -> `Scope (`O o)
       | _ -> raise (Invalid_param ("section: invalid key: " ^ key))
 
-  let inverted (js : Ezjsonm.value) ~key =
+  let inverted (js : Json.value) ~key =
     match js with
     | `Null
     | `Bool false
@@ -99,9 +115,9 @@ module Lookup = struct
 
 end
 
-let render_fmt (fmt : Format.formatter) (m : t) (js : Ezjsonm.t) =
+let render_fmt (fmt : Format.formatter) (m : t) (js : Json.t) =
 
-  let rec render' m (js : Ezjsonm.value) = match m with
+  let rec render' m (js : Json.value) = match m with
 
     | Iter_var ->
       Format.pp_print_string fmt (Lookup.scalar js)
@@ -135,9 +151,9 @@ let render_fmt (fmt : Format.formatter) (m : t) (js : Ezjsonm.t) =
     | Concat templates ->
       List.iter (fun x -> render' x js) templates
 
-  in render' m (Ezjsonm.value js)
+  in render' m (Json.value js)
 
-let render (m : t) (js : Ezjsonm.t) =
+let render (m : t) (js : Json.t) =
   let b = Buffer.create 0 in
   let fmt = Format.formatter_of_buffer b in
   render_fmt fmt m js ;

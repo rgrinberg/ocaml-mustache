@@ -2,6 +2,20 @@
 exception Invalid_param of string
 exception Invalid_template of string
 
+module Json : sig (** Compatible with Ezjsonm *)
+  type value =
+    [ `Null
+    | `Bool of bool
+    | `Float of float
+    | `String of string
+    | `A of value list
+    | `O of (string * value) list ]
+
+  type t =
+    [ `A of value list
+    | `O of (string * value) list ]
+end
+
 type t
 
 (** Read *)
@@ -18,11 +32,11 @@ val to_string : t -> string
 
 (** [render_fmt fmt template json] render [template], filling it
     with data from [json], printing it to formatter [fmt]. *)
-val render_fmt : Format.formatter -> t -> Ezjsonm.t -> unit
+val render_fmt : Format.formatter -> t -> Json.t -> unit
 
 (** [render template json] use [render_fmt] to render [template]
     with data from [json] and returns the resulting string. *)
-val render : t -> Ezjsonm.t -> string
+val render : t -> Json.t -> string
 
 (** Shortcut for concatening two templates pieces. *)
 module Infix : sig

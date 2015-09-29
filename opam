@@ -9,7 +9,7 @@ dev-repo: "https://github.com/rgrinberg/ocaml-mustache.git"
 
 build: [
   ["oasis" "setup"]
-  ["ocaml" "setup.ml" "-configure"]
+  ["ocaml" "setup.ml" "-configure" "--disable-cli"]
   ["ocaml" "setup.ml" "-build"]
 ]
 
@@ -30,7 +30,6 @@ build-test: [
 depends: [
   "ocamlfind" {build}
   "oasis" {build & >= "0.4.0"}
-  "ezjsonm" {>= "0.4.0"}
 ]
 
 available: [ocaml-version >= "4.01.0"]
