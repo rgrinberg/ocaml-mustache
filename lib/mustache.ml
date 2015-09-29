@@ -90,7 +90,9 @@ module Lookup = struct
     match js with
     | `Null | `Float _ | `Bool _
     | `String _ | `A _ -> raise (Invalid_param ("str. not an object"))
-    | `O assoc -> scalar (List.assoc key assoc)
+    | `O assoc ->
+      scalar (try List.assoc key assoc
+              with Not_found -> raise (Missing_variable key))
 
   let section (js : Json.value) ~key =
     match js with

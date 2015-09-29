@@ -2,6 +2,9 @@
 exception Invalid_param of string
 exception Invalid_template of string
 
+(** Raised when a missing variable in a template is not substituted *)
+exception Missing_variable of string
+
 module Json : sig (** Compatible with Ezjsonm *)
   type value =
     [ `Null
