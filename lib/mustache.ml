@@ -77,6 +77,37 @@ let to_string x =
   Format.pp_print_flush fmt () ;
   Buffer.contents b
 
+let rec fold ?(iter_var = fun acc -> acc)
+	     ?(string = fun _ acc -> acc)
+	     ?(escaped = fun _ acc -> acc)
+	     ?(unescaped = fun _ acc -> acc)
+	     ?(partial = fun _ acc -> acc)
+	     ?(comment = fun _ acc -> acc) =
+  function
+  | Iter_var -> iter_var
+  | String s -> string s
+  | Escaped s -> escaped s
+  | Unescaped s -> unescaped s
+  | Comment s -> comment s
+  | Section {contents} | Inverted_section {contents} ->
+    fold ~iter_var ~string ~escaped ~unescaped ~partial ~comment contents
+  | Concat ms ->
+    fun init ->
+      List.fold_left
+	~f:(fun acc ms ->
+	  fold ~iter_var ~string ~escaped ~unescaped ~partial ~comment ms acc)
+	~init ms
+  | Partial p -> partial p
+
+let rec expand_partials f = function
+  | Iter_var | String _ | Escaped _ | Unescaped _ | Comment _ as m -> m
+  | Section s ->
+    Section {s with contents = expand_partials f s.contents}
+  | Inverted_section s ->
+    Inverted_section {s with contents = expand_partials f s.contents}
+  | Concat ms -> Concat (List.map (expand_partials f) ms)
+  | Partial p -> f p
+
 module Lookup = struct
   let scalar = function
     | `Null -> "null"
