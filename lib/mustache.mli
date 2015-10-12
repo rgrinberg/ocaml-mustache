@@ -41,6 +41,29 @@ val render_fmt : Format.formatter -> t -> Json.t -> unit
     with data from [json] and returns the resulting string. *)
 val render : t -> Json.t -> string
 
+(** [fold template] is the composition of [f] over parts of [template], called
+    in order of occurrence, where each [f] is one of the labelled arguments
+    applied to the corresponding part.  The default for [f] is the identity
+    function.
+
+    @param iter_var Called on each [{{.}}].
+    @param string Applied to each literal part of the template.
+    @param escaped Applied to ["name"] for occurrences of [{{name}}].
+    @param unescaped Applied to ["name"] for occurrences of [{{{name}}}].
+    @param partial Applied to ["box"] for occurrences of [{{> box}}].
+    @param comment Applied to ["comment"] for occurrences of [{{! comment}}]. *)
+val fold : ?iter_var: ('a -> 'a) ->
+	   ?string: (string -> 'a -> 'a) ->
+	   ?escaped: (string -> 'a -> 'a) ->
+	   ?unescaped: (string -> 'a -> 'a) ->
+	   ?partial: (string -> 'a -> 'a) ->
+	   ?comment: (string -> 'a -> 'a) ->
+	   t -> 'a -> 'a
+
+val expand_partials : (string -> t) -> t -> t
+(** [expand_partials f template] is [template] with [f p] substituted for each
+    partial [p]. *)
+
 (** Shortcut for concatening two templates pieces. *)
 module Infix : sig
   val (^) : t -> t -> t
