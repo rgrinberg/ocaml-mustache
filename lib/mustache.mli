@@ -46,13 +46,12 @@ val render : t -> Json.t -> string
     applied to the corresponding part.  The default for [f] is the identity
     function.
 
-    @param iter_var Called on each [{{.}}].
     @param string Applied to each literal part of the template.
     @param escaped Applied to ["name"] for occurrences of [{{name}}].
     @param unescaped Applied to ["name"] for occurrences of [{{{name}}}].
     @param partial Applied to ["box"] for occurrences of [{{> box}}].
     @param comment Applied to ["comment"] for occurrences of [{{! comment}}]. *)
-val fold : ?iter_var: ('a -> 'a) ->
+val fold :
 	   ?string: (string -> 'a -> 'a) ->
 	   ?escaped: (string -> 'a -> 'a) ->
 	   ?unescaped: (string -> 'a -> 'a) ->
@@ -72,9 +71,6 @@ end
 (** Escape [&], ["\""], ['], [<] and [>]
     character for html rendering. *)
 val escape_html : string -> string
-
-(** [{{.}}] *)
-val iter_var : t
 
 (** [<p>This is raw text.</p>] *)
 val raw : string -> t

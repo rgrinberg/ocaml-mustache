@@ -1,5 +1,4 @@
 type t =
-  | Iter_var
   | String of string
   | Escaped of string
   | Section of section
