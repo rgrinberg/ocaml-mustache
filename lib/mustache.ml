@@ -129,10 +129,8 @@ module Lookup = struct
       match List.assoc key elems with
       (* php casting *)
       | `Null | `Float _ | `Bool false | `String "" -> `Bool false
-      | `Bool true -> `Bool true
-      | `A e -> `List e
-      | `O o -> `Scope (`O o)
-      | _ -> raise (Invalid_param ("section: invalid key: " ^ key))
+      | (`A _ | `O _) as js -> js
+      | _ -> js
 
   let inverted (js : Json.value) ~key =
     match js with
@@ -168,9 +166,9 @@ let render_fmt (fmt : Format.formatter) (m : t) (js : Json.t) =
     | Section s ->
       begin match Lookup.section js s.name with
       | `Bool false -> ()
-      | `Bool true -> render' s.contents js
-      | `List elems -> List.iter (render' s.contents) elems
-      | `Scope obj -> render' s.contents obj
+      | `Bool true  -> render' s.contents js
+      | `A contexts -> List.iter (render' s.contents) contexts
+      | context     -> render' s.contents context
       end
 
     | Partial _ ->
