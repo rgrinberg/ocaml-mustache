@@ -18,7 +18,7 @@ let tests = [
         ( `O ["bool", `Bool false], "") ] ) ;
 
     ( "{{#implicit}}{{.}}.{{/implicit}}"
-    , section "implicit" (concat [ iter_var ; raw "." ])
+    , section "implicit" (concat [ escaped "." ; raw "." ])
     ,  [ ( `O ["implicit", `A [`String "1" ;
                                `String "2" ;
                                `String "3"] ], "1.2.3.") ;

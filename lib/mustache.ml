@@ -41,9 +41,6 @@ let escape_html s =
 
 let rec to_formatter fmt = function
 
-  | Iter_var ->
-    Format.pp_print_string fmt "{{.}}"
-
   | String s ->
     Format.pp_print_string fmt s
 
@@ -77,30 +74,29 @@ let to_string x =
   Format.pp_print_flush fmt () ;
   Buffer.contents b
 
-let rec fold ?(iter_var = fun acc -> acc)
+let rec fold
 	     ?(string = fun _ acc -> acc)
 	     ?(escaped = fun _ acc -> acc)
 	     ?(unescaped = fun _ acc -> acc)
 	     ?(partial = fun _ acc -> acc)
 	     ?(comment = fun _ acc -> acc) =
   function
-  | Iter_var -> iter_var
   | String s -> string s
   | Escaped s -> escaped s
   | Unescaped s -> unescaped s
   | Comment s -> comment s
   | Section {contents} | Inverted_section {contents} ->
-    fold ~iter_var ~string ~escaped ~unescaped ~partial ~comment contents
+    fold ~string ~escaped ~unescaped ~partial ~comment contents
   | Concat ms ->
     fun init ->
       List.fold_left
 	~f:(fun acc ms ->
-	  fold ~iter_var ~string ~escaped ~unescaped ~partial ~comment ms acc)
+	  fold ~string ~escaped ~unescaped ~partial ~comment ms acc)
 	~init ms
   | Partial p -> partial p
 
 let rec expand_partials f = function
-  | Iter_var | String _ | Escaped _ | Unescaped _ | Comment _ as m -> m
+  | String _ | Escaped _ | Unescaped _ | Comment _ as m -> m
   | Section s ->
     Section {s with contents = expand_partials f s.contents}
   | Inverted_section s ->
@@ -152,15 +148,16 @@ let render_fmt (fmt : Format.formatter) (m : t) (js : Json.t) =
 
   let rec render' m (js : Json.value) = match m with
 
-    | Iter_var ->
-      Format.pp_print_string fmt (Lookup.scalar js)
-
     | String s ->
       Format.pp_print_string fmt s
 
+    | Escaped "." ->
+      Format.pp_print_string fmt (escape_html (Lookup.scalar js))
     | Escaped key ->
       Format.pp_print_string fmt (escape_html (Lookup.str ~key js))
 
+    | Unescaped "." ->
+      Format.pp_print_string fmt (Lookup.scalar js)
     | Unescaped key ->
       Format.pp_print_string fmt (Lookup.str ~key js)
 
@@ -193,7 +190,6 @@ let render (m : t) (js : Json.t) =
   Format.pp_print_flush fmt () ;
   Buffer.contents b
 
-let iter_var = Iter_var
 let raw s = String s
 let escaped s = Escaped s
 let unescaped s = Unescaped s

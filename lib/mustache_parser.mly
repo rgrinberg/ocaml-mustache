@@ -35,7 +35,7 @@ section:
 mustache_element:
   | UNESCAPE_START UNESCAPE_END { Unescaped $1 }
   | UNESCAPE_START_AMPERSAND END { Unescaped $1 }
-  | ESCAPE_START END { if $1 = "." then Iter_var else Escaped $1 }
+  | ESCAPE_START END { Escaped $1 }
   | PARTIAL_START END { Partial $1 }
   | COMMENT_START RAW END { Comment $2 }
   | section { $1 }
