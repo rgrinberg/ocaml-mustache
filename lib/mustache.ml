@@ -74,35 +74,36 @@ let to_string x =
   Format.pp_print_flush fmt () ;
   Buffer.contents b
 
-let rec fold
-	     ?(string = fun _ acc -> acc)
-	     ?(escaped = fun _ acc -> acc)
-	     ?(unescaped = fun _ acc -> acc)
-	     ?(partial = fun _ acc -> acc)
-	     ?(comment = fun _ acc -> acc) =
-  function
+let rec fold ~string ~section ~escaped ~unescaped ~partial ~comment ~concat t =
+  let go = fold ~string ~section ~escaped ~unescaped ~partial ~comment ~concat in
+  match t with
   | String s -> string s
   | Escaped s -> escaped s
   | Unescaped s -> unescaped s
   | Comment s -> comment s
-  | Section {contents} | Inverted_section {contents} ->
-    fold ~string ~escaped ~unescaped ~partial ~comment contents
+  | Section { name; contents } ->
+    section ~inverted:false name (go contents)
+  | Inverted_section { name; contents } ->
+    section ~inverted:true name (go contents)
   | Concat ms ->
-    fun init ->
-      List.fold_left
-	~f:(fun acc ms ->
-	  fold ~string ~escaped ~unescaped ~partial ~comment ms acc)
-	~init ms
+    concat (List.map ms ~f:go)
   | Partial p -> partial p
 
-let rec expand_partials f = function
-  | String _ | Escaped _ | Unescaped _ | Comment _ as m -> m
-  | Section s ->
-    Section {s with contents = expand_partials f s.contents}
-  | Inverted_section s ->
-    Inverted_section {s with contents = expand_partials f s.contents}
-  | Concat ms -> Concat (List.map (expand_partials f) ms)
-  | Partial p -> f p
+let raw s = String s
+let escaped s = Escaped s
+let unescaped s = Unescaped s
+let section n c = Section { name = n ; contents = c }
+let inverted_section n c = Inverted_section { name = n ; contents = c }
+let partial s = Partial s
+let concat t = Concat t
+let comment s = Comment s
+
+let rec expand_partials =
+  let section ~inverted =
+    if inverted then inverted_section else section
+  in
+  fun partial ->
+    fold ~string:raw ~section ~escaped ~unescaped ~partial ~comment ~concat
 
 module Lookup = struct
   let scalar ?(strict=true) = function
@@ -193,12 +194,3 @@ let render ?(strict=true) (m : t) (js : Json.t) =
   render_fmt ~strict fmt m js ;
   Format.pp_print_flush fmt () ;
   Buffer.contents b
-
-let raw s = String s
-let escaped s = Escaped s
-let unescaped s = Unescaped s
-let section n c = Section { name = n ; contents = c }
-let inverted_section n c = Inverted_section { name = n ; contents = c }
-let partial s = Partial s
-let concat t = Concat t
-let comment s = Comment s
