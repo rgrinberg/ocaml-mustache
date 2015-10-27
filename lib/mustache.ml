@@ -105,32 +105,38 @@ let rec expand_partials f = function
   | Partial p -> f p
 
 module Lookup = struct
-  let scalar = function
-    | `Null -> "null"
+  let scalar ?(strict=true) = function
+    | `Null -> if strict then "null" else ""
     | `Bool true -> "true"
     | `Bool false -> "false"
     | `Float f -> string_of_float f
     | `String s -> s
     | `A _ | `O _ -> raise (Invalid_param "Lookup.scalar: not a scalar")
 
-  let str (js : Json.value) ~key =
+  let str ?(strict=true) (js : Json.value) ~key =
     match js with
     | `Null | `Float _ | `Bool _
     | `String _ | `A _ -> raise (Invalid_param ("str. not an object"))
     | `O assoc ->
-      scalar (try List.assoc key assoc
-              with Not_found -> raise (Missing_variable key))
+      try
+        scalar (List.assoc key assoc)
+      with Not_found ->
+        if strict then raise (Missing_variable key) else ""
 
-  let section (js : Json.value) ~key =
+  let section ?(strict=true) (js : Json.value) ~key =
     match js with
     | `Null | `Float _ | `A _
-    | `Bool _ | `String _ -> raise (Invalid_param ("section: " ^ key))
+    | `Bool _ | `String _ ->
+      if strict then raise (Invalid_param ("section: " ^ key)) else `Bool false
     | `O elems ->
-      match List.assoc key elems with
-      (* php casting *)
-      | `Null | `Float _ | `Bool false | `String "" -> `Bool false
-      | (`A _ | `O _) as js -> js
-      | _ -> js
+      try
+        match List.assoc key elems with
+        (* php casting *)
+        | `Null | `Float _ | `Bool false | `String "" -> `Bool false
+        | (`A _ | `O _) as js -> js
+        | _ -> js
+      with Not_found ->
+        if strict then raise Not_found else `Bool false
 
   let inverted (js : Json.value) ~key =
     match js with
@@ -142,7 +148,7 @@ module Lookup = struct
 
 end
 
-let render_fmt (fmt : Format.formatter) (m : t) (js : Json.t) =
+let render_fmt ?(strict=true) (fmt : Format.formatter) (m : t) (js : Json.t) =
 
   let rec render' m (js : Json.value) = match m with
 
@@ -152,19 +158,19 @@ let render_fmt (fmt : Format.formatter) (m : t) (js : Json.t) =
     | Escaped "." ->
       Format.pp_print_string fmt (escape_html (Lookup.scalar js))
     | Escaped key ->
-      Format.pp_print_string fmt (escape_html (Lookup.str ~key js))
+      Format.pp_print_string fmt (escape_html (Lookup.str ~strict ~key js))
 
     | Unescaped "." ->
       Format.pp_print_string fmt (Lookup.scalar js)
     | Unescaped key ->
-      Format.pp_print_string fmt (Lookup.str ~key js)
+      Format.pp_print_string fmt (Lookup.str ~strict ~key js)
 
     | Inverted_section s ->
       if Lookup.inverted js s.name
       then render' (Section s) js
 
     | Section s ->
-      begin match Lookup.section js s.name with
+      begin match Lookup.section ~strict js ~key:s.name with
       | `Bool false -> ()
       | `Bool true  -> render' s.contents js
       | `A contexts -> List.iter (render' s.contents) contexts
@@ -181,10 +187,10 @@ let render_fmt (fmt : Format.formatter) (m : t) (js : Json.t) =
 
   in render' m (Json.value js)
 
-let render (m : t) (js : Json.t) =
+let render ?(strict=true) (m : t) (js : Json.t) =
   let b = Buffer.create 0 in
   let fmt = Format.formatter_of_buffer b in
-  render_fmt fmt m js ;
+  render_fmt ~strict fmt m js ;
   Format.pp_print_flush fmt () ;
   Buffer.contents b
 

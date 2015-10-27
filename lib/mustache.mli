@@ -35,11 +35,11 @@ val to_string : t -> string
 
 (** [render_fmt fmt template json] render [template], filling it
     with data from [json], printing it to formatter [fmt]. *)
-val render_fmt : Format.formatter -> t -> Json.t -> unit
+val render_fmt : ?strict:bool -> Format.formatter -> t -> Json.t -> unit
 
 (** [render template json] use [render_fmt] to render [template]
     with data from [json] and returns the resulting string. *)
-val render : t -> Json.t -> string
+val render : ?strict:bool -> t -> Json.t -> string
 
 (** [fold template] is the composition of [f] over parts of [template], called
     in order of occurrence, where each [f] is one of the labelled arguments
