@@ -51,13 +51,14 @@ val render : ?strict:bool -> t -> Json.t -> string
     @param unescaped Applied to ["name"] for occurrences of [{{{name}}}].
     @param partial Applied to ["box"] for occurrences of [{{> box}}].
     @param comment Applied to ["comment"] for occurrences of [{{! comment}}]. *)
-val fold :
-	   ?string: (string -> 'a -> 'a) ->
-	   ?escaped: (string -> 'a -> 'a) ->
-	   ?unescaped: (string -> 'a -> 'a) ->
-	   ?partial: (string -> 'a -> 'a) ->
-	   ?comment: (string -> 'a -> 'a) ->
-	   t -> 'a -> 'a
+val fold : string: (string -> 'a) ->
+  section: (inverted:bool -> string -> 'a -> 'a) ->
+  escaped: (string -> 'a) ->
+  unescaped: (string -> 'a) ->
+  partial: (string -> 'a) ->
+  comment: (string -> 'a) ->
+  concat:('a list -> 'a) ->
+  t -> 'a
 
 val expand_partials : (string -> t) -> t -> t
 (** [expand_partials f template] is [template] with [f p] substituted for each
