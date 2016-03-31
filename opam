@@ -29,6 +29,7 @@ build-test: [
 depends: [
   "ocamlfind" {build}
   "ocamlbuild" {build}
+  "ounit" {test}
 ]
 
 available: [ocaml-version >= "4.01.0"]
