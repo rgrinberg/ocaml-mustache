@@ -9,7 +9,6 @@ dev-repo: "https://github.com/rgrinberg/ocaml-mustache.git"
 doc: "http://mustache.github.io/mustache.5.html"
 
 build: [
-  ["oasis" "setup"]
   ["ocaml" "setup.ml" "-configure" "--disable-cli"]
   ["ocaml" "setup.ml" "-build"]
 ]
@@ -22,7 +21,6 @@ remove: [
 
 build-doc: ["ocaml" "setup.ml" "-doc"]
 build-test: [
-  ["oasis" "setup"]
   ["ocaml" "setup.ml" "-configure" "--enable-tests"]
   ["ocaml" "setup.ml" "-build"]
   ["ocaml" "setup.ml" "-test"]
@@ -30,7 +28,7 @@ build-test: [
 
 depends: [
   "ocamlfind" {build}
-  "oasis" {build & >= "0.4.0"}
+  "ocamlbuild" {build}
 ]
 
 available: [ocaml-version >= "4.01.0"]

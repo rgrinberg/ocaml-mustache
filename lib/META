@@ -1,0 +1,11 @@
+# OASIS_START
+# DO NOT EDIT (digest: df33b23d6277e1aa8ec1350c006fed50)
+version = "2.1.0"
+description = "Mustache.js templates in OCaml"
+archive(byte) = "mustache.cma"
+archive(byte, plugin) = "mustache.cma"
+archive(native) = "mustache.cmxa"
+archive(native, plugin) = "mustache.cmxs"
+exists_if = "mustache.cma"
+# OASIS_STOP
+
