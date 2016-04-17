@@ -25,9 +25,12 @@ type t
 val parse_lx : Lexing.lexbuf -> t
 val of_string : string -> t
 
-(** [to_formatter fmt template] print a template as raw mustache to
+(** [pp fmt template] print a template as raw mustache to
     the formatter [fmt].  *)
+val pp : Format.formatter -> t -> unit
+
 val to_formatter : Format.formatter -> t -> unit
+(** Alias for compatibility *)
 
 (** [to_string template] uses [to_formatter] in order to return
     a string representing the template as raw mustache.  *)

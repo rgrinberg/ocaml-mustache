@@ -60,7 +60,7 @@ let escape_html s =
   ) s ;
   Buffer.contents b
 
-let rec to_formatter fmt = function
+let rec pp fmt = function
 
   | String s ->
     Format.pp_print_string fmt s
@@ -73,11 +73,11 @@ let rec to_formatter fmt = function
 
   | Inverted_section s ->
     Format.fprintf fmt "{{^%s}}%a{{/%s}}"
-      s.name to_formatter s.contents s.name
+      s.name pp s.contents s.name
 
   | Section s ->
     Format.fprintf fmt "{{#%s}}%a{{/%s}}"
-      s.name to_formatter s.contents s.name
+      s.name pp s.contents s.name
 
   | Partial s ->
     Format.fprintf fmt "{{> %s }}" s
@@ -86,12 +86,14 @@ let rec to_formatter fmt = function
     Format.fprintf fmt "{{! %s }}" s
 
   | Concat s ->
-    List.iter (to_formatter fmt) s
+    List.iter (pp fmt) s
+
+let to_formatter = pp
 
 let to_string x =
   let b = Buffer.create 0 in
   let fmt = Format.formatter_of_buffer b in
-  to_formatter fmt x ;
+  pp fmt x ;
   Format.pp_print_flush fmt () ;
   Buffer.contents b
 
@@ -200,7 +202,7 @@ let render_fmt ?(strict=true) (fmt : Format.formatter) (m : t) (js : Json.t) =
       end
 
     | Partial _ ->
-      to_formatter fmt m
+      pp fmt m
 
     | Comment c -> ()
 
