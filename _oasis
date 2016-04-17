@@ -15,7 +15,7 @@ Library mustache
 
 Flag cli
   Description: enable compilation of cli utility
-  Default: true
+  Default: false
 
 Test test
   Run$:               flag(tests)
