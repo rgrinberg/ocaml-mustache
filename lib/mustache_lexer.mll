@@ -26,7 +26,7 @@
 }
 
 let space = [' ' '\t' '\n']*
-let id = ['a'-'z' 'A'-'Z' '_'] ['a'-'z' 'A'-'Z' '0'-'9' '_']+
+let id = ['a'-'z' 'A'-'Z' '_' '/'] ['a'-'z' 'A'-'Z' '0'-'9' '_' '/']+
 
 rule ident = parse
   | space '.' space { "." }
