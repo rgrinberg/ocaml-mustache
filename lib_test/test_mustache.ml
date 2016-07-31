@@ -64,6 +64,29 @@ let tests = [
           <b>bar</b>\
           <b>bar</b>" ) ] ) ;
 
+    ("Hello {{ /foo }}!"
+    , concat [ raw "Hello " ;
+               escaped "/foo" ;
+               raw "!" ]
+    , [ (`O [ "/foo", `String "World" ], "Hello World!") ] ) ;
+
+    ("{{& deep/path/string }}"
+    , unescaped "deep/path/string"
+    , [ (`O [ "deep/path/string", `String "<p>Test content</p>" ],
+         "<p>Test content</p>") ] ) ;
+
+    ( "{{#things/with/slashes}}{{v/1/}}-{{v/2/}}{{/things/with/slashes}}"
+    , section "things/with/slashes" (concat [ escaped "v/1/"
+                                            ; raw "-"
+                                            ; escaped "v/2/" ])
+    , [ ( `O [ "things/with/slashes" ,
+               `A [ `O [ ("v/1/", `String "1" ) ;
+                         ("v/2/", `String "one" ) ] ;
+                    `O [ ("v/1/", `String "2" ) ;
+                         ("v/2/", `String "two" ) ] ;
+                  ] ],
+          "1-one2-two" ) ] ) ;
+
   ]
 
 let () =
