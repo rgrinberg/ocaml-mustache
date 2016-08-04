@@ -160,7 +160,7 @@ module Lookup = struct
         | (`A _ | `O _) as js -> js
         | _ -> js
       with Not_found ->
-        if strict then raise Not_found else `Bool false
+        if strict then raise (Missing_section key) else `Bool false
 
   let inverted (js : Json.value) ~key =
     match js with
