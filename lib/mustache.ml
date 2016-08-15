@@ -22,11 +22,16 @@
 open MoreLabels
 include Mustache_types
 
+let dummy_loc = {
+  loc_start = Lexing.dummy_pos;
+  loc_end = Lexing.dummy_pos;
+}
+
 module List = ListLabels
 module String = StringLabels
 
 module Infix = struct
-  let (^) y x = Concat [x; y]
+  let (^) y x = Concat (dummy_loc, [x; y])
 end
 
 module Json = struct
@@ -62,30 +67,30 @@ let escape_html s =
 
 let rec pp fmt = function
 
-  | String s ->
+  | String (_, s) ->
     Format.pp_print_string fmt s
 
-  | Escaped s ->
+  | Escaped (_, s) ->
     Format.fprintf fmt "{{ %s }}" s
 
-  | Unescaped s ->
+  | Unescaped (_, s) ->
     Format.fprintf fmt "{{& %s }}" s
 
-  | Inverted_section s ->
+  | Inverted_section (_, s) ->
     Format.fprintf fmt "{{^%s}}%a{{/%s}}"
       s.name pp s.contents s.name
 
-  | Section s ->
+  | Section (_, s) ->
     Format.fprintf fmt "{{#%s}}%a{{/%s}}"
       s.name pp s.contents s.name
 
-  | Partial s ->
+  | Partial (_, s) ->
     Format.fprintf fmt "{{> %s }}" s
 
-  | Comment s ->
+  | Comment (_, s) ->
     Format.fprintf fmt "{{! %s }}" s
 
-  | Concat s ->
+  | Concat (_, s) ->
     List.iter (pp fmt) s
 
 let to_formatter = pp
@@ -100,26 +105,26 @@ let to_string x =
 let rec fold ~string ~section ~escaped ~unescaped ~partial ~comment ~concat t =
   let go = fold ~string ~section ~escaped ~unescaped ~partial ~comment ~concat in
   match t with
-  | String s -> string s
-  | Escaped s -> escaped s
-  | Unescaped s -> unescaped s
-  | Comment s -> comment s
-  | Section { name; contents } ->
+  | String (_, s) -> string s
+  | Escaped (_, s) -> escaped s
+  | Unescaped (_, s) -> unescaped s
+  | Comment (_, s) -> comment s
+  | Section (_, { name; contents }) ->
     section ~inverted:false name (go contents)
-  | Inverted_section { name; contents } ->
+  | Inverted_section (_, { name; contents }) ->
     section ~inverted:true name (go contents)
-  | Concat ms ->
+  | Concat (_, ms) ->
     concat (List.map ms ~f:go)
-  | Partial p -> partial p
+  | Partial (_, p) -> partial p
 
-let raw s = String s
-let escaped s = Escaped s
-let unescaped s = Unescaped s
-let section n c = Section { name = n ; contents = c }
-let inverted_section n c = Inverted_section { name = n ; contents = c }
-let partial s = Partial s
-let concat t = Concat t
-let comment s = Comment s
+let raw s = String (dummy_loc, s)
+let escaped s = Escaped (dummy_loc, s)
+let unescaped s = Unescaped (dummy_loc, s)
+let section n c = Section (dummy_loc, { name = n ; contents = c })
+let inverted_section n c = Inverted_section (dummy_loc, { name = n ; contents = c })
+let partial s = Partial (dummy_loc, s)
+let concat t = Concat (dummy_loc, t)
+let comment s = Comment (dummy_loc, s)
 
 let rec expand_partials =
   let section ~inverted =
@@ -176,24 +181,24 @@ let render_fmt ?(strict=true) (fmt : Format.formatter) (m : t) (js : Json.t) =
 
   let rec render' m (js : Json.value) = match m with
 
-    | String s ->
+    | String (_, s) ->
       Format.pp_print_string fmt s
 
-    | Escaped "." ->
+    | Escaped (_, ".") ->
       Format.pp_print_string fmt (escape_html (Lookup.scalar js))
-    | Escaped key ->
+    | Escaped (_, key) ->
       Format.pp_print_string fmt (escape_html (Lookup.str ~strict ~key js))
 
-    | Unescaped "." ->
+    | Unescaped (_, ".") ->
       Format.pp_print_string fmt (Lookup.scalar js)
-    | Unescaped key ->
+    | Unescaped (_, key) ->
       Format.pp_print_string fmt (Lookup.str ~strict ~key js)
 
-    | Inverted_section s ->
+    | Inverted_section (loc, s) ->
       if Lookup.inverted js s.name
-      then render' (Section s) js
+      then render' (Section (loc, s)) js
 
-    | Section s ->
+    | Section (_, s) ->
       begin match Lookup.section ~strict js ~key:s.name with
       | `Bool false -> ()
       | `Bool true  -> render' s.contents js
@@ -201,12 +206,12 @@ let render_fmt ?(strict=true) (fmt : Format.formatter) (m : t) (js : Json.t) =
       | context     -> render' s.contents context
       end
 
-    | Partial _ ->
+    | Partial (_, _) ->
       pp fmt m
 
-    | Comment c -> ()
+    | Comment (_, c) -> ()
 
-    | Concat templates ->
+    | Concat (_, templates) ->
       List.iter (fun x -> render' x js) templates
 
   in render' m (Json.value js)

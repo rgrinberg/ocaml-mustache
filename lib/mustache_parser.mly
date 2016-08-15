@@ -29,6 +29,10 @@
       let msg =
         Printf.sprintf "Mismatched section %s with %s" start_s end_s in
       raise (Invalid_template msg)
+
+  let loc () =
+    { loc_start = Parsing.symbol_start_pos ();
+      loc_end = Parsing.symbol_end_pos () }
 %}
 
 %token EOF
@@ -51,19 +55,19 @@
 %%
 
 section:
-  | SECTION_INVERT_START END mustache SECTION_END END { Inverted_section (parse_section $1 $4 $3) }
-  | SECTION_START END mustache SECTION_END END { Section (parse_section $1 $4 $3) }
+  | SECTION_INVERT_START END mustache SECTION_END END { Inverted_section (loc (), parse_section $1 $4 $3) }
+  | SECTION_START END mustache SECTION_END END { Section (loc (), parse_section $1 $4 $3) }
 
 mustache_element:
-  | UNESCAPE_START UNESCAPE_END { Unescaped $1 }
-  | UNESCAPE_START_AMPERSAND END { Unescaped $1 }
-  | ESCAPE_START END { Escaped $1 }
-  | PARTIAL_START END { Partial $1 }
-  | COMMENT_START RAW END { Comment $2 }
+  | UNESCAPE_START UNESCAPE_END { Unescaped (loc (), $1) }
+  | UNESCAPE_START_AMPERSAND END { Unescaped (loc (), $1) }
+  | ESCAPE_START END { Escaped (loc (), $1) }
+  | PARTIAL_START END { Partial (loc (), $1) }
+  | COMMENT_START RAW END { Comment (loc (), $2) }
   | section { $1 }
 
 string:
-  | RAW { String $1 }
+  | RAW { String (loc (), $1) }
 
 mustache_l:
   | mustache_element mustache_l { ($1 :: $2) }
@@ -75,8 +79,8 @@ mustache:
   | mustache_l {
     match $1 with
     | [x] -> x
-    | x -> Concat x
+    | x -> Concat (loc (), x)
   }
-  | EOF { String "" }
+  | EOF { String (loc (), "") }
 
 %%

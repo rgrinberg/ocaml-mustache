@@ -19,15 +19,21 @@
    LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
    FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
    IN THE SOFTWARE. }}}*)
+
+type loc = {
+  loc_start: Lexing.position;
+  loc_end: Lexing.position;
+}
+
 type t =
-  | String of string
-  | Escaped of string
-  | Section of section
-  | Unescaped of string
-  | Partial of string
-  | Inverted_section of section
-  | Concat of t list
-  | Comment of string
+  | String of loc * string
+  | Escaped of loc * string
+  | Section of loc * section
+  | Unescaped of loc * string
+  | Partial of loc * string
+  | Inverted_section of loc * section
+  | Concat of loc * t list
+  | Comment of loc * string
 and section = {
   name: string;
   contents: t;

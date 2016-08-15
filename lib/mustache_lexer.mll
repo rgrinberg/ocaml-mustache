@@ -23,27 +23,42 @@
   open Lexing
   open Mustache_parser
   open Mustache_types
+
+  let with_space space f lexbuf =
+    let start_p = lexbuf.Lexing.lex_start_p in
+    let () = space lexbuf in
+    let x = f lexbuf in
+    space lexbuf;
+    lexbuf.Lexing.lex_start_p <- start_p;
+    x
 }
 
-let space = [' ' '\t' '\n']*
+let blank = [' ' '\t']*
+let newline = ('\n' | "\r\n")
+let raw = [^ '{' '}' '\n']*
 let id = ['a'-'z' 'A'-'Z' '_' '/'] ['a'-'z' 'A'-'Z' '0'-'9' '_' '/']+
 
-rule ident = parse
-  | space '.' space { "." }
-  | space (id as x) space { x }
+rule space = parse
+  | blank newline { new_line lexbuf; space lexbuf }
+  | blank { () }
+
+and ident = parse
+  | '.' { "." }
+  | (id as x) { x }
   | _ { raise (Invalid_template "Invalid section") }
 
 and mustache = parse
-  | "{{{"        { UNESCAPE_START (ident lexbuf) }
-  | "{{&"        { UNESCAPE_START_AMPERSAND (ident lexbuf) }
-  | "{{#"        { SECTION_START (ident lexbuf) }
-  | "{{^"        { SECTION_INVERT_START (ident lexbuf) }
-  | "{{/"        { SECTION_END (ident lexbuf) }
-  | "{{>"        { PARTIAL_START (ident lexbuf) }
+  | "{{{"        { UNESCAPE_START (with_space space ident lexbuf) }
+  | "{{&"        { UNESCAPE_START_AMPERSAND (with_space space ident lexbuf) }
+  | "{{#"        { SECTION_START (with_space space ident lexbuf) }
+  | "{{^"        { SECTION_INVERT_START (with_space space ident lexbuf) }
+  | "{{/"        { SECTION_END (with_space space ident lexbuf) }
+  | "{{>"        { PARTIAL_START (with_space space ident lexbuf) }
   | "{{!"        { COMMENT_START }
-  | "{{"         { ESCAPE_START (ident lexbuf) }
+  | "{{"         { ESCAPE_START (with_space space ident lexbuf) }
   | "}}}"        { UNESCAPE_END }
   | "}}"         { END }
-  | [^ '{' '}']* { RAW (lexeme lexbuf) }
+  | raw newline  { new_line lexbuf; RAW (lexeme lexbuf) }
+  | raw          { RAW (lexeme lexbuf) }
   | ['{' '}']    { RAW (lexeme lexbuf) }
   | eof          { EOF }

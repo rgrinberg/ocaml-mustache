@@ -20,18 +20,27 @@ module Json : sig (** Compatible with Ezjsonm *)
     | `O of (string * value) list ]
 end
 
+type loc = {
+  loc_start: Lexing.position;
+  loc_end: Lexing.position;
+}
+
 type t =
-  | String of string
-  | Escaped of string
-  | Section of section
-  | Unescaped of string
-  | Partial of string
-  | Inverted_section of section
-  | Concat of t list
-  | Comment of string
+  | String of loc * string
+  | Escaped of loc * string
+  | Section of loc * section
+  | Unescaped of loc * string
+  | Partial of loc * string
+  | Inverted_section of loc * section
+  | Concat of loc * t list
+  | Comment of loc * string
 and section =
   { name: string
   ; contents: t }
+
+(** A value of type [loc], guaranteed to be different from any valid
+    location.  *)
+val dummy_loc : loc
 
 (** Read *)
 val parse_lx : Lexing.lexbuf -> t
