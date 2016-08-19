@@ -20,7 +20,18 @@ module Json : sig (** Compatible with Ezjsonm *)
     | `O of (string * value) list ]
 end
 
-type t
+type t =
+  | String of string
+  | Escaped of string
+  | Section of section
+  | Unescaped of string
+  | Partial of string
+  | Inverted_section of section
+  | Concat of t list
+  | Comment of string
+and section =
+  { name: string
+  ; contents: t }
 
 (** Read *)
 val parse_lx : Lexing.lexbuf -> t
