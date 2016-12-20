@@ -1,5 +1,5 @@
 # OASIS_START
-# DO NOT EDIT (digest: 80d2f60b71104e8b9926cade6c27edbe)
+# DO NOT EDIT (digest: ad8bf5a98b4812d6b2ba0f62e2cecdce)
 # Ignore VCS directories, you can use the same kind of rule outside
 # OASIS_START/STOP if you want to exclude directories that contains
 # useless stuff for the build process
@@ -21,6 +21,10 @@ true: annot, bin_annot
 <lib_test/test_mustache.{native,byte}>: use_mustache
 <lib_test/*.ml{,i,y}>: pkg_oUnit
 <lib_test/test_mustache.{native,byte}>: custom
+# Executable mustache_example
+<examples/mustache_example.{native,byte}>: use_mustache
+<examples/*.ml{,i,y}>: use_mustache
+<examples/mustache_example.{native,byte}>: custom
 # Executable mustache_cli
 <lib_test/mustache_cli.{native,byte}>: pkg_ezjsonm
 <lib_test/mustache_cli.{native,byte}>: use_mustache
