@@ -31,6 +31,15 @@ Executable test_mustache
   Install:            false
   BuildDepends:       oUnit, mustache
 
+Executable mustache_example
+  Path:               examples
+  MainIs:             mustache_example.ml
+  Build:              true
+  Custom:             true
+  CompiledObject:     best
+  Install:            false
+  BuildDepends:       mustache
+
 Executable mustache_cli
   Path:               lib_test
   MainIs:             mustache_cli.ml
