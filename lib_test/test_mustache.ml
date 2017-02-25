@@ -89,6 +89,9 @@ let tests = [
 
   ]
 
+let roundtrip : t -> t =
+  fun t -> erase_locs (add_dummy_locs t)
+
 let () =
 
   let assert_equal ?(printer=fun _ -> "") a b =
@@ -99,7 +102,9 @@ let () =
     (List.mapi
        (fun i (input, expected_parsing, rendering_tests) ->
         let template = Mustache.of_string input in
-        (Printf.sprintf "%d - parsing" i
+        (Printf.sprintf "%d - erase_locs/add_dummy_locs roundtrip" i
+         >:: assert_equal (roundtrip template) template)
+        :: (Printf.sprintf "%d - parsing" i
          >:: assert_equal expected_parsing template)
         :: List.mapi (fun j (data, expected) ->
                       (Printf.sprintf "%d - rendering (%d)" i j)
