@@ -19,19 +19,43 @@
    LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
    FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
    IN THE SOFTWARE. }}}*)
-type t =
-  | String of string
-  | Escaped of string
-  | Section of section
-  | Unescaped of string
-  | Partial of string
-  | Inverted_section of section
-  | Concat of t list
-  | Comment of string
-and section = {
-  name: string;
-  contents: t;
-}
+
+module Locs = struct
+  type loc =
+    { loc_start: Lexing.position;
+      loc_end: Lexing.position }
+
+  type desc =
+    | String of string
+    | Escaped of string
+    | Section of section
+    | Unescaped of string
+    | Partial of string
+    | Inverted_section of section
+    | Concat of t list
+    | Comment of string
+  and section =
+    { name: string;
+      contents: t }
+  and t =
+    { loc : loc;
+      desc : desc }
+end
+
+module No_locs = struct
+  type t =
+    | String of string
+    | Escaped of string
+    | Section of section
+    | Unescaped of string
+    | Partial of string
+    | Inverted_section of section
+    | Concat of t list
+    | Comment of string
+  and section =
+    { name: string;
+      contents: t }
+end
 
 exception Invalid_param of string
 exception Invalid_template of string

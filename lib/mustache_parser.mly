@@ -22,6 +22,7 @@
 }}}*/
 %{
   open Mustache_types
+  open Mustache_types.Locs
   let parse_section start_s end_s contents =
     if start_s = end_s
     then { contents; name=start_s }
@@ -29,6 +30,16 @@
       let msg =
         Printf.sprintf "Mismatched section %s with %s" start_s end_s in
       raise (Invalid_template msg)
+
+  let loc () =
+    { loc_start = Parsing.symbol_start_pos ();
+      loc_end = Parsing.symbol_end_pos () }
+
+  let with_loc desc =
+    let loc =
+      { loc_start = Parsing.symbol_start_pos ();
+        loc_end = Parsing.symbol_end_pos () } in
+    { loc; desc }
 %}
 
 %token EOF
@@ -46,24 +57,26 @@
 %token <string> RAW
 
 %start mustache
-%type <Mustache_types.t> mustache
+%type <Mustache_types.Locs.t> mustache
 
 %%
 
 section:
-  | SECTION_INVERT_START END mustache SECTION_END END { Inverted_section (parse_section $1 $4 $3) }
-  | SECTION_START END mustache SECTION_END END { Section (parse_section $1 $4 $3) }
+  | SECTION_INVERT_START END mustache SECTION_END END {
+    with_loc (Inverted_section (parse_section $1 $4 $3)) }
+  | SECTION_START END mustache SECTION_END END {
+    with_loc (Section (parse_section $1 $4 $3)) }
 
 mustache_element:
-  | UNESCAPE_START UNESCAPE_END { Unescaped $1 }
-  | UNESCAPE_START_AMPERSAND END { Unescaped $1 }
-  | ESCAPE_START END { Escaped $1 }
-  | PARTIAL_START END { Partial $1 }
-  | COMMENT_START RAW END { Comment $2 }
+  | UNESCAPE_START UNESCAPE_END { with_loc (Unescaped $1) }
+  | UNESCAPE_START_AMPERSAND END { with_loc (Unescaped $1) }
+  | ESCAPE_START END { with_loc (Escaped $1) }
+  | PARTIAL_START END { with_loc (Partial $1) }
+  | COMMENT_START RAW END { with_loc (Comment $2) }
   | section { $1 }
 
 string:
-  | RAW { String $1 }
+  | RAW { with_loc (String $1) }
 
 mustache_l:
   | mustache_element mustache_l { ($1 :: $2) }
@@ -75,8 +88,8 @@ mustache:
   | mustache_l {
     match $1 with
     | [x] -> x
-    | x -> Concat x
+    | x -> with_loc (Concat x)
   }
-  | EOF { String "" }
+  | EOF { with_loc (String "") }
 
 %%
