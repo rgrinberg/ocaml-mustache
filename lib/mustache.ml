@@ -135,7 +135,7 @@ module Lookup = struct
     | `Null -> if strict then "null" else ""
     | `Bool true -> "true"
     | `Bool false -> "false"
-    | `Float f -> string_of_float f
+    | `Float f -> Printf.sprintf "%.12g" f
     | `String s -> s
     | `A _ | `O _ -> raise (Invalid_param "Lookup.scalar: not a scalar")
 
