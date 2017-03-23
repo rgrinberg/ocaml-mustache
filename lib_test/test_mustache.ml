@@ -106,18 +106,31 @@ let () =
 
     (List.mapi
        (fun i (input, expected_parsing, rendering_tests) ->
-        let template = Mustache.of_string input in
+        let template =
+          try Mustache.of_string input
+          with exn ->
+            failwith (
+              Printf.sprintf "Parsing of test %d failed: %s"
+                i (Printexc.to_string exn)
+            )
+        in
         (Printf.sprintf "%d - erase_locs/add_dummy_locs roundtrip" i
          >:: assert_equal (roundtrip template) template)
         :: (Printf.sprintf "%d - parsing" i
          >:: assert_equal expected_parsing template)
         :: List.mapi (fun j (data, expected) ->
-                      (Printf.sprintf "%d - rendering (%d)" i j)
-                      >:: (Mustache.render template data
-                           |> assert_equal ~printer:(fun x -> x)
-                                           expected ) )
-                     rendering_tests )
-       tests
+          let rendered =
+            try Mustache.render template data
+            with exn ->
+              failwith (
+                Printf.sprintf "Rendering %d of test %d failed: %s"
+                  j i (Printexc.to_string exn)
+              )
+          in
+          (Printf.sprintf "%d - rendering (%d)" i j)
+          >:: (assert_equal ~printer:(fun x -> x) expected rendered)
+        ) rendering_tests
+       ) tests
      |> List.flatten)
 
   |> run_test_tt_main
