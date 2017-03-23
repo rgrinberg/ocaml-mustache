@@ -87,6 +87,11 @@ let tests = [
                   ] ],
           "1-one2-two" ) ] ) ;
 
+    ("{{#a}}{{x}}{{/a}}"
+    , section "a" (escaped "x")
+    , [ ( `O [ "a" , `A [ `O [ ("x", `Float 1.) ]; `O [ ("x", `Float 2.) ] ] ],
+          "12" ) ] ) ;
+
   ]
 
 let roundtrip : t -> t =
