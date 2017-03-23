@@ -94,6 +94,35 @@ let tests = [
 
   ]
 
+let mkloc (lnum_s, bol_s, cnum_s, lnum_e, bol_e, cnum_e) =
+  { With_locations.loc_start =
+      { Lexing.pos_fname = "";
+        Lexing.pos_lnum = lnum_s;
+        Lexing.pos_bol = bol_s;
+        Lexing.pos_cnum = cnum_s };
+    With_locations.loc_end =
+      { Lexing.pos_fname = "";
+        Lexing.pos_lnum = lnum_e;
+        Lexing.pos_bol = bol_e;
+        Lexing.pos_cnum = cnum_e } }
+
+let tests_with_locs = With_locations.[
+  (" {{#  a\n  }} {{ \n  x }}\n {{/a}}"
+   , concat ~loc:(mkloc (1, 0, 0, 4, 24, 31)) [
+      raw ~loc:(mkloc (1, 0, 0, 1, 0, 1)) " ";
+      section ~loc:(mkloc (1, 0, 1, 4, 24, 31)) "a" (
+        concat ~loc:(mkloc (2, 8, 12, 4, 24, 25)) [
+          raw ~loc:(mkloc (2, 8, 12, 2, 8, 13)) " ";
+          escaped ~loc:(mkloc (2, 8, 13, 3, 17, 23)) "x";
+          raw ~loc:(mkloc (3, 17, 23, 4, 24, 24)) "\n";
+          raw ~loc:(mkloc (4, 24, 24, 4, 24, 25)) " "
+        ]
+      )
+    ]
+   , [ ( `O [ "a" , `O [ ("x", `String "foo") ] ],
+         "  foo\n ") ] );
+]
+
 let roundtrip : t -> t =
   fun t -> erase_locs (add_dummy_locs t)
 
@@ -131,6 +160,32 @@ let () =
           >:: (assert_equal ~printer:(fun x -> x) expected rendered)
         ) rendering_tests
        ) tests
+     @
+     List.mapi
+       (fun i (input, expected_parsing, rendering_tests) ->
+          let template =
+            try Mustache.With_locations.of_string input
+            with exn ->
+              failwith (
+                Printf.sprintf "Parsing of test with locations %d failed: %s"
+                  i (Printexc.to_string exn)
+              )
+          in
+          (Printf.sprintf "%d with locations - parsing" i
+           >:: assert_equal expected_parsing template)
+          :: List.mapi (fun j (data, expected) ->
+            let rendered =
+              try Mustache.With_locations.render template data
+              with exn ->
+                failwith (
+                  Printf.sprintf "Rendering %d of test with locations %d failed: %s"
+                    j i (Printexc.to_string exn)
+                )
+            in
+            (Printf.sprintf "%d with locations - rendering (%d)" i j)
+            >:: (assert_equal ~printer:(fun x -> x) expected rendered)
+          ) rendering_tests
+       ) tests_with_locs
      |> List.flatten)
 
   |> run_test_tt_main
