@@ -36,7 +36,7 @@
 let blank = [' ' '\t']*
 let newline = ('\n' | "\r\n")
 let raw = [^ '{' '}' '\n']*
-let id = ['a'-'z' 'A'-'Z' '_' '/'] ['a'-'z' 'A'-'Z' '0'-'9' '_' '/']+
+let id = ['a'-'z' 'A'-'Z' '_' '/'] ['a'-'z' 'A'-'Z' '0'-'9' '_' '/']*
 
 rule space = parse
   | blank newline { new_line lexbuf; space lexbuf }
