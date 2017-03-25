@@ -31,14 +31,10 @@
         Printf.sprintf "Mismatched section %s with %s" start_s end_s in
       raise (Invalid_template msg)
 
-  let loc () =
-    { loc_start = Parsing.symbol_start_pos ();
-      loc_end = Parsing.symbol_end_pos () }
-
-  let with_loc desc =
+  let with_loc startpos endpos desc =
     let loc =
-      { loc_start = Parsing.symbol_start_pos ();
-        loc_end = Parsing.symbol_end_pos () } in
+      { loc_start = startpos;
+        loc_end = endpos } in
     { loc; desc }
 %}
 
@@ -62,34 +58,37 @@
 %%
 
 section:
-  | SECTION_INVERT_START END mustache SECTION_END END {
-    with_loc (Inverted_section (parse_section $1 $4 $3)) }
-  | SECTION_START END mustache SECTION_END END {
-    with_loc (Section (parse_section $1 $4 $3)) }
+  | ss = SECTION_INVERT_START END
+    e = mustache_expr
+    se = SECTION_END END {
+    with_loc $symbolstartpos $endpos
+      (Inverted_section (parse_section ss se e))
+  }
+  | ss = SECTION_START END
+    e = mustache_expr
+    se = SECTION_END END {
+    with_loc $symbolstartpos $endpos
+      (Section (parse_section ss se e))
+  }
 
 mustache_element:
-  | UNESCAPE_START UNESCAPE_END { with_loc (Unescaped $1) }
-  | UNESCAPE_START_AMPERSAND END { with_loc (Unescaped $1) }
-  | ESCAPE_START END { with_loc (Escaped $1) }
-  | PARTIAL_START END { with_loc (Partial $1) }
-  | COMMENT_START RAW END { with_loc (Comment $2) }
-  | section { $1 }
+  | elt = UNESCAPE_START UNESCAPE_END { with_loc $symbolstartpos $endpos (Unescaped elt) }
+  | elt = UNESCAPE_START_AMPERSAND END { with_loc $symbolstartpos $endpos (Unescaped elt) }
+  | elt = ESCAPE_START END { with_loc $symbolstartpos $endpos (Escaped elt) }
+  | elt = PARTIAL_START END { with_loc $symbolstartpos $endpos (Partial elt) }
+  | COMMENT_START s = RAW END { with_loc $symbolstartpos $endpos (Comment s) }
+  | sec = section { sec }
+  | s = RAW { with_loc $symbolstartpos $endpos (String s) }
 
-string:
-  | RAW { with_loc (String $1) }
-
-mustache_l:
-  | mustache_element mustache_l { ($1 :: $2) }
-  | string mustache_l { ($1 :: $2) }
-  | mustache_element { [$1] }
-  | string { [$1] }
+mustache_expr:
+  | elts = list(mustache_element) {
+    match elts with
+    | [] -> with_loc $symbolstartpos $endpos (String "")
+    | [x] -> x
+    | xs -> with_loc $symbolstartpos $endpos (Concat xs)
+  }
 
 mustache:
-  | mustache_l {
-    match $1 with
-    | [x] -> x
-    | x -> with_loc (Concat x)
-  }
-  | EOF { with_loc (String "") }
+  | mexpr = mustache_expr EOF { mexpr }
 
 %%

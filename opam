@@ -29,6 +29,7 @@ build-test: [
 depends: [
   "ocamlfind" {build}
   "ocamlbuild" {build}
+  "menhir" {build}
   "ounit" {test}
 ]
 
