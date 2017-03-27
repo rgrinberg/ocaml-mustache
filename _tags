@@ -32,3 +32,5 @@ true: annot, bin_annot
 <lib_test/*.ml{,i,y}>: use_mustache
 <lib_test/mustache_cli.{native,byte}>: custom
 # OASIS_STOP
+
+true: use_menhir, explain
