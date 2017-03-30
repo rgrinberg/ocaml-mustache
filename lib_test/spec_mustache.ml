@@ -4,7 +4,7 @@ module J = Ezjsonm
 let (^/) = Filename.concat
 
 let specs_directory =
-  Filename.parent_dir_name ^/ "mustache-spec" ^/ "specs"
+  Filename.parent_dir_name ^/ "specs"
 
 type test = {
   from_file: string;
