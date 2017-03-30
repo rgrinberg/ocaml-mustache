@@ -31,6 +31,7 @@ depends: [
   "ocamlbuild" {build}
   "menhir" {build}
   "ounit" {test}
+  "ezjsonm" {test}
 ]
 
 available: [ocaml-version >= "4.01.0"]
