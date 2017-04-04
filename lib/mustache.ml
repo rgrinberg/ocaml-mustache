@@ -99,18 +99,18 @@ let rec pp fmt =
     Format.pp_print_string fmt s
 
   | Escaped s ->
-    Format.fprintf fmt "{{ %s }}" s
+    Format.fprintf fmt "{{ %a }}" pp_dotted_name s
 
   | Unescaped s ->
-    Format.fprintf fmt "{{& %s }}" s
+    Format.fprintf fmt "{{& %a }}" pp_dotted_name s
 
   | Inverted_section s ->
-    Format.fprintf fmt "{{^%s}}%a{{/%s}}"
-      s.name pp s.contents s.name
+    Format.fprintf fmt "{{^%a}}%a{{/%a}}"
+      pp_dotted_name s.name pp s.contents pp_dotted_name s.name
 
   | Section s ->
-    Format.fprintf fmt "{{#%s}}%a{{/%s}}"
-      s.name pp s.contents s.name
+    Format.fprintf fmt "{{#%a}}%a{{/%a}}"
+      pp_dotted_name s.name pp s.contents pp_dotted_name s.name
 
   | Partial s ->
     Format.fprintf fmt "{{> %s }}" s
@@ -139,68 +139,72 @@ module Lookup = struct
     | `String s -> s
     | `A _ | `O _ -> raise (Invalid_param "Lookup.scalar: not a scalar")
 
+  let rec dotted_name ?(strict=true) (js : Json.value) ~key =
+    match key with
+    | [] -> Some js
+    | n :: ns ->
+      match js with
+      | `Null | `Float _ | `Bool _
+      | `String _ | `A _ -> raise (Invalid_param ("str. not an object"))
+      | `O assoc ->
+        try
+          dotted_name ~strict (List.assoc n assoc) ~key:ns
+        with Not_found ->
+          if strict then raise (Missing_variable n) else None
+
   let str ?(strict=true) (js : Json.value) ~key =
-    match js with
-    | `Null | `Float _ | `Bool _
-    | `String _ | `A _ -> raise (Invalid_param ("str. not an object"))
-    | `O assoc ->
-      try
-        scalar (List.assoc key assoc)
-      with Not_found ->
-        if strict then raise (Missing_variable key) else ""
+    match dotted_name ~strict js ~key with
+    | None -> ""
+    | Some js -> scalar ~strict js
 
   let section ?(strict=true) (js : Json.value) ~key =
-    match js with
-    | `Null | `Float _ | `A _
-    | `Bool _ | `String _ ->
-      if strict then raise (Invalid_param ("section: " ^ key)) else `Bool false
-    | `O elems ->
-      try
-        match List.assoc key elems with
-        (* php casting *)
-        | `Null | `Float _ | `Bool false | `String "" -> `Bool false
-        | (`A _ | `O _) as js -> js
-        | _ -> js
-      with Not_found ->
-        if strict then raise (Missing_section key) else `Bool false
+    let key_s = string_of_dotted_name key in
+    match dotted_name ~strict:false js ~key with
+    | None -> if strict then raise (Missing_section key_s) else `Bool false
+    | Some js ->
+      match js with
+      (* php casting *)
+      | `Null | `Float _ | `Bool false | `String "" -> `Bool false
+      | (`A _ | `O _) as js -> js
+      | _ -> js
 
   let inverted (js : Json.value) ~key =
-    match js with
-    | `Null
-    | `Bool false
-    | `A [] -> true
-    | `O map -> not (List.mem_assoc ~map key)
+    match dotted_name ~strict:false js ~key with
+    | None -> true
+    | Some (`A [] | `Bool false | `Null) -> true
     | _ -> false
 
 end
 
 let render_fmt ?(strict=true) (fmt : Format.formatter) (m : No_locs.t) (js : Json.t) =
   let open No_locs in
+  let add_context ctx js =
+    match (ctx, js) with
+    | `O ctx_o, `O js_o -> `O (ctx_o @ js_o)
+    | _, _ -> ctx
+  in
+
   let rec render' m (js : Json.value) = match m with
 
     | String s ->
       Format.pp_print_string fmt s
 
-    | Escaped "." ->
-      Format.pp_print_string fmt (escape_html (Lookup.scalar js))
-    | Escaped key ->
-      Format.pp_print_string fmt (escape_html (Lookup.str ~strict ~key js))
+    | Escaped name ->
+      Format.pp_print_string fmt (escape_html (Lookup.str ~strict ~key:name js))
 
-    | Unescaped "." ->
-      Format.pp_print_string fmt (Lookup.scalar js)
-    | Unescaped key ->
-      Format.pp_print_string fmt (Lookup.str ~strict ~key js)
+    | Unescaped name ->
+      Format.pp_print_string fmt (Lookup.str ~strict ~key:name js)
 
     | Inverted_section s ->
       if Lookup.inverted js s.name
-      then render' (Section s) js
+      then render' s.contents js
 
     | Section s ->
       begin match Lookup.section ~strict js ~key:s.name with
       | `Bool false -> ()
       | `Bool true  -> render' s.contents js
-      | `A contexts -> List.iter (render' s.contents) contexts
-      | context     -> render' s.contents context
+      | `A contexts -> List.iter (fun ctx -> render' s.contents (add_context ctx js)) contexts
+      | context     -> render' s.contents (add_context context js)
       end
 
     | Partial _ ->

@@ -20,17 +20,20 @@ module Json : sig (** Compatible with Ezjsonm *)
     | `O of (string * value) list ]
 end
 
+type name = string
+type dotted_name = string list
+
 type t =
   | String of string
-  | Escaped of string
+  | Escaped of dotted_name
   | Section of section
-  | Unescaped of string
-  | Partial of string
+  | Unescaped of dotted_name
+  | Partial of name
   | Inverted_section of section
   | Concat of t list
   | Comment of string
 and section =
-  { name: string;
+  { name: dotted_name;
     contents: t }
 
 (** Read *)
@@ -67,15 +70,15 @@ val render : ?strict:bool -> t -> Json.t -> string
     @param partial Applied to ["box"] for occurrences of [{{> box}}].
     @param comment Applied to ["comment"] for occurrences of [{{! comment}}]. *)
 val fold : string: (string -> 'a) ->
-  section: (inverted:bool -> string -> 'a -> 'a) ->
-  escaped: (string -> 'a) ->
-  unescaped: (string -> 'a) ->
-  partial: (string -> 'a) ->
+  section: (inverted:bool -> dotted_name -> 'a -> 'a) ->
+  escaped: (dotted_name -> 'a) ->
+  unescaped: (dotted_name -> 'a) ->
+  partial: (name -> 'a) ->
   comment: (string -> 'a) ->
   concat:('a list -> 'a) ->
   t -> 'a
 
-val expand_partials : (string -> t) -> t -> t
+val expand_partials : (name -> t) -> t -> t
 (** [expand_partials f template] is [template] with [f p] substituted for each
     partial [p]. *)
 
@@ -92,19 +95,19 @@ val escape_html : string -> string
 val raw : string -> t
 
 (** [{{name}}] *)
-val escaped : string -> t
+val escaped : dotted_name -> t
 
 (** [{{{name}}}] *)
-val unescaped : string -> t
+val unescaped : dotted_name -> t
 
 (** [{{^person}} {{/person}}] *)
-val inverted_section : string -> t -> t
+val inverted_section : dotted_name -> t -> t
 
 (** [{{#person}} {{/person}}] *)
-val section : string -> t -> t
+val section : dotted_name -> t -> t
 
 (** [{{> box}}] *)
-val partial : string -> t
+val partial : name -> t
 
 (** [{{! this is a comment}}] *)
 val comment : string -> t
@@ -121,15 +124,15 @@ module With_locations : sig
 
   type desc =
     | String of string
-    | Escaped of string
+    | Escaped of dotted_name
     | Section of section
-    | Unescaped of string
-    | Partial of string
+    | Unescaped of dotted_name
+    | Partial of name
     | Inverted_section of section
     | Concat of t list
     | Comment of string
   and section =
-    { name: string;
+    { name: dotted_name;
       contents: t }
   and t =
     { loc : loc;
@@ -173,15 +176,15 @@ module With_locations : sig
       @param partial Applied to ["box"] for occurrences of [{{> box}}].
       @param comment Applied to ["comment"] for occurrences of [{{! comment}}]. *)
   val fold : string: (loc:loc -> string -> 'a) ->
-    section: (loc:loc -> inverted:bool -> string -> 'a -> 'a) ->
-    escaped: (loc:loc -> string -> 'a) ->
-    unescaped: (loc:loc -> string -> 'a) ->
-    partial: (loc:loc -> string -> 'a) ->
+    section: (loc:loc -> inverted:bool -> dotted_name -> 'a -> 'a) ->
+    escaped: (loc:loc -> dotted_name -> 'a) ->
+    unescaped: (loc:loc -> dotted_name -> 'a) ->
+    partial: (loc:loc -> name -> 'a) ->
     comment: (loc:loc -> string -> 'a) ->
     concat:(loc:loc -> 'a list -> 'a) ->
     t -> 'a
 
-  val expand_partials : (loc:loc -> string -> t) -> t -> t
+  val expand_partials : (loc:loc -> name -> t) -> t -> t
   (** [expand_partials f template] is [template] with [f p] substituted for each
       partial [p]. *)
 
@@ -196,19 +199,19 @@ module With_locations : sig
   val raw : loc:loc -> string -> t
 
   (** [{{name}}] *)
-  val escaped : loc:loc -> string -> t
+  val escaped : loc:loc -> dotted_name -> t
 
   (** [{{{name}}}] *)
-  val unescaped : loc:loc -> string -> t
+  val unescaped : loc:loc -> dotted_name -> t
 
   (** [{{^person}} {{/person}}] *)
-  val inverted_section : loc:loc -> string -> t -> t
+  val inverted_section : loc:loc -> dotted_name -> t -> t
 
   (** [{{#person}} {{/person}}] *)
-  val section : loc:loc -> string -> t -> t
+  val section : loc:loc -> dotted_name -> t -> t
 
   (** [{{> box}}] *)
-  val partial : loc:loc -> string -> t
+  val partial : loc:loc -> name -> t
 
   (** [{{! this is a comment}}] *)
   val comment : loc:loc -> string -> t
