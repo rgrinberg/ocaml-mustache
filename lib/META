@@ -1,7 +1,8 @@
 # OASIS_START
-# DO NOT EDIT (digest: df33b23d6277e1aa8ec1350c006fed50)
+# DO NOT EDIT (digest: ea8c463b90e862c4036089906703cc9a)
 version = "2.1.0"
 description = "Mustache.js templates in OCaml"
+requires = "menhirLib"
 archive(byte) = "mustache.cma"
 archive(byte, plugin) = "mustache.cma"
 archive(native) = "mustache.cmxa"

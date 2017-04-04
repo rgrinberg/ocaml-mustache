@@ -11,6 +11,7 @@ Library mustache
   Path:       lib
   BuildTools: ocamlbuild
   Modules:    Mustache
+  BuildDepends: menhirLib
   InternalModules: Mustache_types, Mustache_lexer, Mustache_parser
 
 Flag cli

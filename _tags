@@ -1,5 +1,5 @@
 # OASIS_START
-# DO NOT EDIT (digest: a6597da647a03173acf61715d0ec5379)
+# DO NOT EDIT (digest: 673e5677b543c678b138d7f120f0da1e)
 # Ignore VCS directories, you can use the same kind of rule outside
 # OASIS_START/STOP if you want to exclude directories that contains
 # useless stuff for the build process
@@ -16,24 +16,31 @@ true: annot, bin_annot
 "_darcs": not_hygienic
 # Library mustache
 "lib/mustache.cmxs": use_mustache
+<lib/*.ml{,i,y}>: pkg_menhirLib
 # Executable test_mustache
+<lib_test/test_mustache.{native,byte}>: pkg_menhirLib
 <lib_test/test_mustache.{native,byte}>: pkg_oUnit
 <lib_test/test_mustache.{native,byte}>: use_mustache
 <lib_test/test_mustache.{native,byte}>: custom
 # Executable spec_mustache
 <lib_test/spec_mustache.{native,byte}>: pkg_ezjsonm
+<lib_test/spec_mustache.{native,byte}>: pkg_menhirLib
 <lib_test/spec_mustache.{native,byte}>: pkg_oUnit
 <lib_test/spec_mustache.{native,byte}>: use_mustache
 <lib_test/*.ml{,i,y}>: pkg_oUnit
 <lib_test/spec_mustache.{native,byte}>: custom
 # Executable mustache_example
+<examples/mustache_example.{native,byte}>: pkg_menhirLib
 <examples/mustache_example.{native,byte}>: use_mustache
+<examples/*.ml{,i,y}>: pkg_menhirLib
 <examples/*.ml{,i,y}>: use_mustache
 <examples/mustache_example.{native,byte}>: custom
 # Executable mustache_cli
 <lib_test/mustache_cli.{native,byte}>: pkg_ezjsonm
+<lib_test/mustache_cli.{native,byte}>: pkg_menhirLib
 <lib_test/mustache_cli.{native,byte}>: use_mustache
 <lib_test/*.ml{,i,y}>: pkg_ezjsonm
+<lib_test/*.ml{,i,y}>: pkg_menhirLib
 <lib_test/*.ml{,i,y}>: use_mustache
 <lib_test/mustache_cli.{native,byte}>: custom
 # OASIS_STOP

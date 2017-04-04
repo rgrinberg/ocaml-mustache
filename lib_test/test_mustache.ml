@@ -111,23 +111,27 @@ let tests_with_locs = With_locations.[
    , concat ~loc:(mkloc (1, 0, 0, 4, 24, 31)) [
       raw ~loc:(mkloc (1, 0, 0, 1, 0, 1)) " ";
       section ~loc:(mkloc (1, 0, 1, 4, 24, 31)) ["a"] (
-        concat ~loc:(mkloc (2, 8, 12, 4, 24, 25)) [
+        concat ~loc:(mkloc (2, 8, 12, 4, 24, 24)) [
           raw ~loc:(mkloc (2, 8, 12, 2, 8, 13)) " ";
           escaped ~loc:(mkloc (2, 8, 13, 3, 17, 23)) ["x"];
           raw ~loc:(mkloc (3, 17, 23, 4, 24, 24)) "\n";
-          raw ~loc:(mkloc (4, 24, 24, 4, 24, 25)) " "
+          (* raw ~loc:(mkloc (4, 24, 24, 4, 24, 25)) " " *)
         ]
       )
     ]
    , [ ( `O [ "a" , `O [ ("x", `String "foo") ] ],
-         "  foo\n ") ] );
+         "  foo\n") ] );
   ("{{!x}}"
    , comment ~loc:(mkloc (1, 0, 0, 1, 0, 6)) "x"
    , [ ( `A [], "" )]);
 
   ("{{!x\ny}}"
    , comment ~loc:(mkloc (1, 0, 0, 2, 5, 8)) "x\ny"
-   , [ ( `A [], "" )])
+   , [ ( `A [], "" )]);
+
+  ("  {{!x}}   "
+   , comment ~loc:(mkloc (1, 0, 2, 1, 0, 8)) "x"
+   , [ (`A [], "" )]);
 ]
 
 let roundtrip : t -> t =
