@@ -24,13 +24,19 @@
   open Mustache_parser
   open Mustache_types
 
-  let with_space space f lexbuf =
+  let tok_arg f lexbuf =
     let start_p = lexbuf.Lexing.lex_start_p in
-    let () = space lexbuf in
     let x = f lexbuf in
-    space lexbuf;
     lexbuf.Lexing.lex_start_p <- start_p;
     x
+
+  let with_space space f =
+    tok_arg (fun lexbuf ->
+      let () = space lexbuf in
+      let x = f lexbuf in
+      let () = space lexbuf in
+      x
+    )
 
   let split_on_char sep s =
     let open String in
@@ -65,6 +71,12 @@ and id = parse
 and ident = parse
   | ident { lexeme lexbuf }
 
+and comment acc = parse
+  | "}}"        { String.concat "" (List.rev acc) }
+  | raw newline { new_line lexbuf; comment ((lexeme lexbuf) :: acc) lexbuf }
+  | raw         { comment ((lexeme lexbuf) :: acc) lexbuf }
+  | ['{' '}']   { comment ((lexeme lexbuf) :: acc) lexbuf }
+
 and mustache = parse
   | "{{{"        { UNESCAPE_START (with_space space ident lexbuf |> split_ident) }
   | "{{&"        { UNESCAPE_START_AMPERSAND (with_space space ident lexbuf |> split_ident) }
@@ -72,7 +84,7 @@ and mustache = parse
   | "{{^"        { SECTION_INVERT_START (with_space space ident lexbuf |> split_ident) }
   | "{{/"        { SECTION_END (with_space space ident lexbuf |> split_ident) }
   | "{{>"        { PARTIAL_START (with_space space id lexbuf) }
-  | "{{!"        { COMMENT_START }
+  | "{{!"        { COMMENT (tok_arg (comment []) lexbuf) }
   | "{{"         { ESCAPE_START (with_space space ident lexbuf |> split_ident) }
   | "}}}"        { UNESCAPE_END }
   | "}}"         { END }

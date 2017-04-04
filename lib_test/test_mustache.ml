@@ -121,6 +121,13 @@ let tests_with_locs = With_locations.[
     ]
    , [ ( `O [ "a" , `O [ ("x", `String "foo") ] ],
          "  foo\n ") ] );
+  ("{{!x}}"
+   , comment ~loc:(mkloc (1, 0, 0, 1, 0, 6)) "x"
+   , [ ( `A [], "" )]);
+
+  ("{{!x\ny}}"
+   , comment ~loc:(mkloc (1, 0, 0, 2, 5, 8)) "x\ny"
+   , [ ( `A [], "" )])
 ]
 
 let roundtrip : t -> t =
