@@ -72,11 +72,11 @@ let mktest test =
   assert_equal test.expected (apply_mustache test)
 
 let specs = [
-  (* "comments.json"; *)
+  "comments.json";
   "interpolation.json";
-  (* "inverted.json"; *)
+  "inverted.json";
   (* "partials.json"; *)
-  (* "sections.json"; *)
+  "sections.json";
 ]
 
 let tests =
