@@ -20,6 +20,19 @@
    FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
    IN THE SOFTWARE. }}}*)
 
+type name = string
+type dotted_name = string list
+
+let pp_dotted_name fmt = function
+  | [] ->
+    Format.fprintf fmt "."
+  | n :: ns ->
+    Format.fprintf fmt "%s" n;
+    List.iter (fun n -> Format.fprintf fmt ".%s" n) ns
+
+let string_of_dotted_name n =
+  Format.asprintf "%a" pp_dotted_name n
+
 module Locs = struct
   type loc =
     { loc_start: Lexing.position;
@@ -27,15 +40,15 @@ module Locs = struct
 
   type desc =
     | String of string
-    | Escaped of string
+    | Escaped of dotted_name
     | Section of section
-    | Unescaped of string
-    | Partial of string
+    | Unescaped of dotted_name
+    | Partial of name
     | Inverted_section of section
     | Concat of t list
     | Comment of string
   and section =
-    { name: string;
+    { name: dotted_name;
       contents: t }
   and t =
     { loc : loc;
@@ -45,15 +58,15 @@ end
 module No_locs = struct
   type t =
     | String of string
-    | Escaped of string
+    | Escaped of dotted_name
     | Section of section
-    | Unescaped of string
-    | Partial of string
+    | Unescaped of dotted_name
+    | Partial of name
     | Inverted_section of section
     | Concat of t list
     | Comment of string
   and section =
-    { name: string;
+    { name: dotted_name;
       contents: t }
 end
 

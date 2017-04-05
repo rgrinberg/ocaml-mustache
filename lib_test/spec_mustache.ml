@@ -73,7 +73,7 @@ let mktest test =
 
 let specs = [
   (* "comments.json"; *)
-  (* "interpolation.json"; *)
+  "interpolation.json";
   (* "inverted.json"; *)
   (* "partials.json"; *)
   (* "sections.json"; *)

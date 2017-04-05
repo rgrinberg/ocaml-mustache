@@ -28,7 +28,10 @@
     then { contents; name=start_s }
     else
       let msg =
-        Printf.sprintf "Mismatched section %s with %s" start_s end_s in
+        Printf.sprintf "Mismatched section %s with %s"
+                       (string_of_dotted_name start_s)
+                       (string_of_dotted_name end_s)
+      in
       raise (Invalid_template msg)
 
   let with_loc startpos endpos desc =
@@ -40,13 +43,13 @@
 
 %token EOF
 %token END
-%token <string> ESCAPE_START
-%token <string> UNESCAPE_START_AMPERSAND
-%token <string> SECTION_INVERT_START
-%token <string> SECTION_START
-%token <string> SECTION_END
+%token <string list> ESCAPE_START
+%token <string list> UNESCAPE_START_AMPERSAND
+%token <string list> SECTION_INVERT_START
+%token <string list> SECTION_START
+%token <string list> SECTION_END
 %token <string> PARTIAL_START
-%token <string> UNESCAPE_START
+%token <string list> UNESCAPE_START
 %token COMMENT_START
 %token UNESCAPE_END
 

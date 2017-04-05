@@ -31,31 +31,49 @@
     space lexbuf;
     lexbuf.Lexing.lex_start_p <- start_p;
     x
+
+  let split_on_char sep s =
+    let open String in
+    let r = ref [] in
+    let j = ref (length s) in
+    for i = length s - 1 downto 0 do
+      if unsafe_get s i = sep then begin
+        r := sub s (i + 1) (!j - i - 1) :: !r;
+        j := i
+      end
+    done;
+    sub s 0 !j :: !r
+
+  let split_ident ident =
+    if ident = "." then []
+    else split_on_char '.' ident
 }
 
 let blank = [' ' '\t']*
 let newline = ('\n' | "\r\n")
 let raw = [^ '{' '}' '\n']*
 let id = ['a'-'z' 'A'-'Z' '_' '/'] ['a'-'z' 'A'-'Z' '0'-'9' '_' '/']*
+let ident = ('.' | id ('.' id)*)
 
 rule space = parse
   | blank newline { new_line lexbuf; space lexbuf }
   | blank { () }
 
+and id = parse
+  | id { lexeme lexbuf }
+
 and ident = parse
-  | '.' { "." }
-  | (id as x) { x }
-  | _ { raise (Invalid_template "Invalid section") }
+  | ident { lexeme lexbuf }
 
 and mustache = parse
-  | "{{{"        { UNESCAPE_START (with_space space ident lexbuf) }
-  | "{{&"        { UNESCAPE_START_AMPERSAND (with_space space ident lexbuf) }
-  | "{{#"        { SECTION_START (with_space space ident lexbuf) }
-  | "{{^"        { SECTION_INVERT_START (with_space space ident lexbuf) }
-  | "{{/"        { SECTION_END (with_space space ident lexbuf) }
-  | "{{>"        { PARTIAL_START (with_space space ident lexbuf) }
+  | "{{{"        { UNESCAPE_START (with_space space ident lexbuf |> split_ident) }
+  | "{{&"        { UNESCAPE_START_AMPERSAND (with_space space ident lexbuf |> split_ident) }
+  | "{{#"        { SECTION_START (with_space space ident lexbuf |> split_ident) }
+  | "{{^"        { SECTION_INVERT_START (with_space space ident lexbuf |> split_ident) }
+  | "{{/"        { SECTION_END (with_space space ident lexbuf |> split_ident) }
+  | "{{>"        { PARTIAL_START (with_space space id lexbuf) }
   | "{{!"        { COMMENT_START }
-  | "{{"         { ESCAPE_START (with_space space ident lexbuf) }
+  | "{{"         { ESCAPE_START (with_space space ident lexbuf |> split_ident) }
   | "}}}"        { UNESCAPE_END }
   | "}}"         { END }
   | raw newline  { new_line lexbuf; RAW (lexeme lexbuf) }

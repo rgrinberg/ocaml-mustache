@@ -9,25 +9,25 @@ module String = StringLabels
 
 let tests = [
     ( "Hello {{ name }}!"
-    , concat [ raw "Hello " ; escaped "name" ; raw "!" ]
+    , concat [ raw "Hello " ; escaped ["name"] ; raw "!" ]
     , [ ( `O ["name" , `String "testing"] , "Hello testing!" ) ] ) ;
 
     ( "{{#bool}}there{{/bool}}"
-    , section "bool" (raw "there")
+    , section ["bool"] (raw "there")
     , [ ( `O ["bool", `Bool true], "there") ;
         ( `O ["bool", `Bool false], "") ] ) ;
 
     ( "{{#implicit}}{{.}}.{{/implicit}}"
-    , section "implicit" (concat [ escaped "." ; raw "." ])
+    , section ["implicit"] (concat [ escaped [] ; raw "." ])
     ,  [ ( `O ["implicit", `A [`String "1" ;
                                `String "2" ;
                                `String "3"] ], "1.2.3.") ;
          ( `O ["implicit", `A [] ], "") ] ) ;
 
     ( "{{#things}}{{v1}}-{{v2}}{{/things}}"
-    , section "things" (concat [ escaped "v1"
-                               ; raw "-"
-                               ; escaped "v2" ])
+    , section ["things"] (concat [ escaped ["v1"]
+                                 ; raw "-"
+                                 ; escaped ["v2"] ])
     , [ ( `O [ "things" ,
                `A [ `O [ ("v1", `String "1" ) ;
                          ("v2", `String "one" ) ] ;
@@ -40,7 +40,7 @@ let tests = [
     , concat [ raw "<style>div " ;
                raw "{" ;
                raw " border: " ;
-               escaped "border" ;
+               escaped ["border"] ;
                raw "; " ;
                raw "}" ;
                raw "</style>" ]
@@ -56,9 +56,9 @@ let tests = [
     ("{{ foo }}\
       {{{ foo }}}\
       {{& foo }}"
-    , concat [ escaped "foo" ;
-               unescaped "foo" ;
-               unescaped "foo" ]
+    , concat [ escaped ["foo"] ;
+               unescaped ["foo"] ;
+               unescaped ["foo"] ]
     , [ (`O [ "foo", `String "<b>bar</b>"],
          "&lt;b&gt;bar&lt;/b&gt;\
           <b>bar</b>\
@@ -66,19 +66,19 @@ let tests = [
 
     ("Hello {{ /foo }}!"
     , concat [ raw "Hello " ;
-               escaped "/foo" ;
+               escaped ["/foo"] ;
                raw "!" ]
     , [ (`O [ "/foo", `String "World" ], "Hello World!") ] ) ;
 
     ("{{& deep/path/string }}"
-    , unescaped "deep/path/string"
+    , unescaped ["deep/path/string"]
     , [ (`O [ "deep/path/string", `String "<p>Test content</p>" ],
          "<p>Test content</p>") ] ) ;
 
     ( "{{#things/with/slashes}}{{v/1/}}-{{v/2/}}{{/things/with/slashes}}"
-    , section "things/with/slashes" (concat [ escaped "v/1/"
-                                            ; raw "-"
-                                            ; escaped "v/2/" ])
+    , section ["things/with/slashes"] (concat [ escaped ["v/1/"]
+                                              ; raw "-"
+                                              ; escaped ["v/2/"] ])
     , [ ( `O [ "things/with/slashes" ,
                `A [ `O [ ("v/1/", `String "1" ) ;
                          ("v/2/", `String "one" ) ] ;
@@ -88,7 +88,7 @@ let tests = [
           "1-one2-two" ) ] ) ;
 
     ("{{#a}}{{x}}{{/a}}"
-    , section "a" (escaped "x")
+    , section ["a"] (escaped ["x"])
     , [ ( `O [ "a" , `A [ `O [ ("x", `Float 1.) ]; `O [ ("x", `Float 2.) ] ] ],
           "12" ) ] ) ;
 
@@ -110,10 +110,10 @@ let tests_with_locs = With_locations.[
   (" {{#  a\n  }} {{ \n  x }}\n {{/a}}"
    , concat ~loc:(mkloc (1, 0, 0, 4, 24, 31)) [
       raw ~loc:(mkloc (1, 0, 0, 1, 0, 1)) " ";
-      section ~loc:(mkloc (1, 0, 1, 4, 24, 31)) "a" (
+      section ~loc:(mkloc (1, 0, 1, 4, 24, 31)) ["a"] (
         concat ~loc:(mkloc (2, 8, 12, 4, 24, 25)) [
           raw ~loc:(mkloc (2, 8, 12, 2, 8, 13)) " ";
-          escaped ~loc:(mkloc (2, 8, 13, 3, 17, 23)) "x";
+          escaped ~loc:(mkloc (2, 8, 13, 3, 17, 23)) ["x"];
           raw ~loc:(mkloc (3, 17, 23, 4, 24, 24)) "\n";
           raw ~loc:(mkloc (4, 24, 24, 4, 24, 25)) " "
         ]
