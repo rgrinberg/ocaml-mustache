@@ -226,8 +226,10 @@ let render ?(strict=true) (m : No_locs.t) (js : Json.t) =
 
 (* Parsing: produces an ast with locations. *)
 
-let parse_lx : Lexing.lexbuf -> Locs.t =
-  Mustache_parser.mustache Mustache_lexer.mustache
+let parse_lx (lexbuf: Lexing.lexbuf) : Locs.t =
+  MenhirLib.Convert.Simplified.traditional2revised
+    Mustache_parser.mustache
+    Mustache_lexer.(handle_standalone mustache lexbuf)
 
 let of_string s = parse_lx (Lexing.from_string s)
 
