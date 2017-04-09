@@ -112,7 +112,7 @@ let rec pp fmt =
     Format.fprintf fmt "{{#%a}}%a{{/%a}}"
       pp_dotted_name s.name pp s.contents pp_dotted_name s.name
 
-  | Partial s ->
+  | Partial (_, s) ->
     Format.fprintf fmt "{{> %s }}" s
 
   | Comment s ->
@@ -188,32 +188,62 @@ let render_fmt
     | _, _ -> ctx
   in
 
-  let rec render' m (js : Json.value) = match m with
+  let print_indent indent =
+    for i = 0 to indent - 1 do
+      Format.pp_print_char fmt ' '
+    done
+  in
+
+  let beginning_of_line = ref true in
+
+  let align indent =
+    if !beginning_of_line then (
+      print_indent indent;
+      beginning_of_line := false
+    )
+  in
+
+  let print_indented_string indent s =
+    let lines = Mustache_lexer.split_on_char '\n' s in
+    align indent; Format.pp_print_string fmt (List.hd lines);
+    List.iter (fun line ->
+      Format.pp_print_char fmt '\n';
+      beginning_of_line := true;
+      if line <> "" then (
+        align indent;
+        Format.pp_print_string fmt line
+      )
+    ) (List.tl lines)
+  in
+
+  let rec render' indent m (js : Json.value) = match m with
 
     | String s ->
-      Format.pp_print_string fmt s
+      print_indented_string indent s
 
     | Escaped name ->
+      align indent;
       Format.pp_print_string fmt (escape_html (Lookup.str ~strict ~key:name js))
 
     | Unescaped name ->
+      align indent;
       Format.pp_print_string fmt (Lookup.str ~strict ~key:name js)
 
     | Inverted_section s ->
       if Lookup.inverted js s.name
-      then render' s.contents js
+      then render' indent s.contents js
 
     | Section s ->
       begin match Lookup.section ~strict js ~key:s.name with
       | `Bool false -> ()
-      | `Bool true  -> render' s.contents js
-      | `A contexts -> List.iter (fun ctx -> render' s.contents (add_context ctx js)) contexts
-      | context     -> render' s.contents (add_context context js)
+      | `Bool true  -> render' indent s.contents js
+      | `A contexts -> List.iter (fun ctx -> render' indent s.contents (add_context ctx js)) contexts
+      | context     -> render' indent s.contents (add_context context js)
       end
 
-    | Partial name ->
+    | Partial (partial_indent, name) ->
       begin match (partials name, strict) with
-      | Some p, _ -> render' p js
+      | Some p, _ -> render' (indent + partial_indent) p js
       | None, false -> ()
       | None, true -> raise (Missing_partial name)
       end
@@ -221,9 +251,9 @@ let render_fmt
     | Comment c -> ()
 
     | Concat templates ->
-      List.iter (fun x -> render' x js) templates
+      List.iter (fun x -> render' indent x js) templates
 
-  in render' m (Json.value js)
+  in render' 0 m (Json.value js)
 
 let render ?strict ?partials (m : No_locs.t) (js : Json.t) =
   let b = Buffer.create 0 in
@@ -281,7 +311,7 @@ module With_locations = struct
       section ~loc ~inverted:true name (go contents)
     | Concat ms ->
       concat ~loc (List.map ms ~f:go)
-    | Partial p -> partial ~loc p
+    | Partial (i, p) -> partial ~loc i p
 
   module Infix = struct
     let (^) t1 t2 = { desc = Concat [t1; t2]; loc = dummy_loc }
@@ -296,7 +326,7 @@ module With_locations = struct
   let inverted_section ~loc n c =
     { desc = Inverted_section { name = n; contents = c };
       loc }
-  let partial ~loc s = { desc = Partial s; loc }
+  let partial ~loc ?(indent = 0) s = { desc = Partial (indent, s); loc }
   let concat ~loc t = { desc = Concat t; loc }
   let comment ~loc s = { desc = Comment s; loc }
 
@@ -326,7 +356,7 @@ module Without_locations = struct
       section ~inverted:true name (go contents)
     | Concat ms ->
       concat (List.map ms ~f:go)
-    | Partial p -> partial p
+    | Partial (i, p) -> partial i p
 
   module Infix = struct
     let (^) y x = Concat [x; y]
@@ -337,7 +367,7 @@ module Without_locations = struct
   let unescaped s = Unescaped s
   let section n c = Section { name = n ; contents = c }
   let inverted_section n c = Inverted_section { name = n ; contents = c }
-  let partial s = Partial s
+  let partial ?(indent = 0) s = Partial (indent, s)
   let concat t = Concat t
   let comment s = Comment s
 end

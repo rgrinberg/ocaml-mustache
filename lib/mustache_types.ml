@@ -43,7 +43,9 @@ module Locs = struct
     | Escaped of dotted_name
     | Section of section
     | Unescaped of dotted_name
-    | Partial of name
+    | Partial of (int * name)
+    (* The integer indicates the level of indentation that will be applied to
+       the partial contents. *)
     | Inverted_section of section
     | Concat of t list
     | Comment of string
@@ -61,7 +63,9 @@ module No_locs = struct
     | Escaped of dotted_name
     | Section of section
     | Unescaped of dotted_name
-    | Partial of name
+    | Partial of (int * name)
+    (* The integer indicates the level of indentation that will be applied to
+       the partial contents. *)
     | Inverted_section of section
     | Concat of t list
     | Comment of string

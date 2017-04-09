@@ -48,7 +48,7 @@
 %token <string list> SECTION_INVERT_START
 %token <string list> SECTION_START
 %token <string list> SECTION_END
-%token <string> PARTIAL_START
+%token <int * string> PARTIAL_START
 %token <string list> UNESCAPE_START
 %token <string> COMMENT
 %token UNESCAPE_END

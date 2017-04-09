@@ -83,7 +83,7 @@ and mustache = parse
   | "{{#"        { SECTION_START (with_space space ident lexbuf |> split_ident) }
   | "{{^"        { SECTION_INVERT_START (with_space space ident lexbuf |> split_ident) }
   | "{{/"        { SECTION_END (with_space space ident lexbuf |> split_ident) }
-  | "{{>"        { PARTIAL_START (with_space space id lexbuf) }
+  | "{{>"        { PARTIAL_START (0, with_space space id lexbuf) }
   | "{{!"        { COMMENT (tok_arg (comment []) lexbuf) }
   | "{{"         { ESCAPE_START (with_space space ident lexbuf |> split_ident) }
   | "}}}"        { UNESCAPE_END }
@@ -150,7 +150,15 @@ and mustache = parse
        | (COMMENT _, _, _) :: toks' ->
          let (_, toks_rest) = skip_blanks toks' in
          begin match toks_rest with
-         | [] | [(EOF, _, _)] -> Some (segment_before toks' toks, toks_rest)
+         | [] | [(EOF, _, _)] ->
+           let toks_standalone =
+             segment_before toks' toks |>
+             function
+             | [(PARTIAL_START (_, p), loc1, loc2); tok_end] ->
+               [(PARTIAL_START (skipped, p), loc1, loc2); tok_end]
+             | toks -> toks
+           in
+           Some (toks_standalone, toks_rest)
          | _ -> None
          end
        | _ -> None

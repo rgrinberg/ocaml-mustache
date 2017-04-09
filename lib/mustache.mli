@@ -29,7 +29,9 @@ type t =
   | Escaped of dotted_name
   | Section of section
   | Unescaped of dotted_name
-  | Partial of name
+  | Partial of (int * name)
+  (* The integer indicates the level of indentation that will be applied to the
+     partial contents. *)
   | Inverted_section of section
   | Concat of t list
   | Comment of string
@@ -85,7 +87,7 @@ val fold : string: (string -> 'a) ->
   section: (inverted:bool -> dotted_name -> 'a -> 'a) ->
   escaped: (dotted_name -> 'a) ->
   unescaped: (dotted_name -> 'a) ->
-  partial: (name -> 'a) ->
+  partial: (int -> name -> 'a) ->
   comment: (string -> 'a) ->
   concat:('a list -> 'a) ->
   t -> 'a
@@ -115,7 +117,7 @@ val inverted_section : dotted_name -> t -> t
 val section : dotted_name -> t -> t
 
 (** [{{> box}}] *)
-val partial : name -> t
+val partial : ?indent:int -> name -> t
 
 (** [{{! this is a comment}}] *)
 val comment : string -> t
@@ -135,7 +137,9 @@ module With_locations : sig
     | Escaped of dotted_name
     | Section of section
     | Unescaped of dotted_name
-    | Partial of name
+    | Partial of (int * name)
+    (* The integer indicates the level of indentation that will be applied to
+       the partial contents. *)
     | Inverted_section of section
     | Concat of t list
     | Comment of string
@@ -198,7 +202,7 @@ module With_locations : sig
     section: (loc:loc -> inverted:bool -> dotted_name -> 'a -> 'a) ->
     escaped: (loc:loc -> dotted_name -> 'a) ->
     unescaped: (loc:loc -> dotted_name -> 'a) ->
-    partial: (loc:loc -> name -> 'a) ->
+    partial: (loc:loc -> int -> name -> 'a) ->
     comment: (loc:loc -> string -> 'a) ->
     concat:(loc:loc -> 'a list -> 'a) ->
     t -> 'a
@@ -226,7 +230,7 @@ module With_locations : sig
   val section : loc:loc -> dotted_name -> t -> t
 
   (** [{{> box}}] *)
-  val partial : loc:loc -> name -> t
+  val partial : loc:loc -> ?indent:int -> name -> t
 
   (** [{{! this is a comment}}] *)
   val comment : loc:loc -> string -> t

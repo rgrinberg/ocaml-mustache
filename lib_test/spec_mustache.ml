@@ -95,7 +95,7 @@ let specs = [
   "comments.json";
   "interpolation.json";
   "inverted.json";
-  "partials.json";
+  (* "partials.json"; *)
   "sections.json";
 ]
 
