@@ -176,7 +176,11 @@ module Lookup = struct
 
 end
 
-let render_fmt ?(strict=true) (fmt : Format.formatter) (m : No_locs.t) (js : Json.t) =
+let render_fmt
+      ?(strict = true)
+      ?(partials = fun _ -> None)
+      (fmt : Format.formatter) (m : No_locs.t) (js : Json.t)
+  =
   let open No_locs in
   let add_context ctx js =
     match (ctx, js) with
@@ -207,8 +211,12 @@ let render_fmt ?(strict=true) (fmt : Format.formatter) (m : No_locs.t) (js : Jso
       | context     -> render' s.contents (add_context context js)
       end
 
-    | Partial _ ->
-      pp fmt m
+    | Partial name ->
+      begin match (partials name, strict) with
+      | Some p, _ -> render' p js
+      | None, false -> ()
+      | None, true -> raise (Missing_partial name)
+      end
 
     | Comment c -> ()
 
@@ -217,10 +225,10 @@ let render_fmt ?(strict=true) (fmt : Format.formatter) (m : No_locs.t) (js : Jso
 
   in render' m (Json.value js)
 
-let render ?(strict=true) (m : No_locs.t) (js : Json.t) =
+let render ?strict ?partials (m : No_locs.t) (js : Json.t) =
   let b = Buffer.create 0 in
   let fmt = Format.formatter_of_buffer b in
-  render_fmt ~strict fmt m js ;
+  render_fmt ?strict ?partials fmt m js ;
   Format.pp_print_flush fmt () ;
   Buffer.contents b
 
@@ -249,11 +257,15 @@ module With_locations = struct
 
   let to_string x = to_string (erase_locs x)
 
-  let render_fmt ?strict fmt m js =
-    render_fmt ?strict fmt (erase_locs m) js
+  let partials_erase_locs partials =
+    let map o f = match o with Some x -> Some (f x) | None -> None in
+    map partials (fun f name -> map (f name) erase_locs)
 
-  let render ?strict m js =
-    render ?strict (erase_locs m) js
+  let render_fmt ?strict ?partials fmt m js =
+    render_fmt ?strict ?partials:(partials_erase_locs partials) fmt (erase_locs m) js
+
+  let render ?strict ?partials m js =
+    render ?strict ?partials:(partials_erase_locs partials) (erase_locs m) js
 
   let rec fold ~string ~section ~escaped ~unescaped ~partial ~comment ~concat t =
     let go = fold ~string ~section ~escaped ~unescaped ~partial ~comment ~concat in
@@ -288,12 +300,6 @@ module With_locations = struct
   let concat ~loc t = { desc = Concat t; loc }
   let comment ~loc s = { desc = Comment s; loc }
 
-  let rec expand_partials =
-    let section ~loc ~inverted =
-      if inverted then inverted_section ~loc else section ~loc
-    in
-    fun partial ->
-      fold ~string:raw ~section ~escaped ~unescaped ~partial ~comment ~concat
 end
 
 module Without_locations = struct
@@ -334,13 +340,6 @@ module Without_locations = struct
   let partial s = Partial s
   let concat t = Concat t
   let comment s = Comment s
-
-  let rec expand_partials =
-    let section ~inverted =
-      if inverted then inverted_section else section
-    in
-    fun partial ->
-      fold ~string:raw ~section ~escaped ~unescaped ~partial ~comment ~concat
 end
 
 (* Include [Without_locations] at the toplevel, to preserve backwards

@@ -5,6 +5,7 @@ exception Invalid_template of string
 (** Raised when a missing variable in a template is not substituted *)
 exception Missing_variable of string
 exception Missing_section of string
+exception Missing_partial of string
 
 module Json : sig (** Compatible with Ezjsonm *)
   type value =
@@ -52,12 +53,23 @@ val to_formatter : Format.formatter -> t -> unit
 val to_string : t -> string
 
 (** [render_fmt fmt template json] render [template], filling it
-    with data from [json], printing it to formatter [fmt]. *)
-val render_fmt : ?strict:bool -> Format.formatter -> t -> Json.t -> unit
+    with data from [json], printing it to formatter [fmt].
+
+    For each partial [p], if [partials p] is [Some t] then the partial is
+    substituted by [t]. Otherwise, the partial is substituted by the empty
+    string is [strict] is [false]. If [strict] is [true], the [Missing_partial
+    p] exception is raised. *)
+val render_fmt :
+  ?strict:bool ->
+  ?partials:(name -> t option) ->
+  Format.formatter -> t -> Json.t -> unit
 
 (** [render template json] use [render_fmt] to render [template]
     with data from [json] and returns the resulting string. *)
-val render : ?strict:bool -> t -> Json.t -> string
+val render :
+  ?strict:bool ->
+  ?partials:(name -> t option) ->
+  t -> Json.t -> string
 
 (** [fold template] is the composition of [f] over parts of [template], called
     in order of occurrence, where each [f] is one of the labelled arguments
@@ -77,10 +89,6 @@ val fold : string: (string -> 'a) ->
   comment: (string -> 'a) ->
   concat:('a list -> 'a) ->
   t -> 'a
-
-val expand_partials : (name -> t) -> t -> t
-(** [expand_partials f template] is [template] with [f p] substituted for each
-    partial [p]. *)
 
 (** Shortcut for concatening two templates pieces. *)
 module Infix : sig
@@ -158,12 +166,23 @@ module With_locations : sig
   val to_string : t -> string
 
   (** [render_fmt fmt template json] render [template], filling it
-      with data from [json], printing it to formatter [fmt]. *)
-  val render_fmt : ?strict:bool -> Format.formatter -> t -> Json.t -> unit
+      with data from [json], printing it to formatter [fmt].
+
+      For each partial [p], if [partials p] is [Some t] then the partial is
+      substituted by [t]. Otherwise, the partial is substituted by the empty
+      string is [strict] is [false]. If [strict] is [true], the [Missing_partial
+      p] exception is raised. *)
+  val render_fmt :
+    ?strict:bool ->
+    ?partials:(name -> t option) ->
+    Format.formatter -> t -> Json.t -> unit
 
   (** [render template json] use [render_fmt] to render [template]
       with data from [json] and returns the resulting string. *)
-  val render : ?strict:bool -> t -> Json.t -> string
+  val render :
+    ?strict:bool ->
+    ?partials:(name -> t option) ->
+    t -> Json.t -> string
 
   (** [fold template] is the composition of [f] over parts of [template], called
       in order of occurrence, where each [f] is one of the labelled arguments
@@ -183,10 +202,6 @@ module With_locations : sig
     comment: (loc:loc -> string -> 'a) ->
     concat:(loc:loc -> 'a list -> 'a) ->
     t -> 'a
-
-  val expand_partials : (loc:loc -> name -> t) -> t -> t
-  (** [expand_partials f template] is [template] with [f p] substituted for each
-      partial [p]. *)
 
   (** Shortcut for concatening two templates pieces. *)
   module Infix : sig
