@@ -34,6 +34,8 @@ let string_of_dotted_name n =
   Format.asprintf "%a" pp_dotted_name n
 
 module Locs = struct
+  [@@@warning "-30"]
+
   type loc =
     { loc_start: Lexing.position;
       loc_end: Lexing.position }
@@ -43,35 +45,41 @@ module Locs = struct
     | Escaped of dotted_name
     | Section of section
     | Unescaped of dotted_name
-    | Partial of (int * name)
-    (* The integer indicates the level of indentation that will be applied to
-       the partial contents. *)
+    | Partial of partial
     | Inverted_section of section
     | Concat of t list
     | Comment of string
   and section =
     { name: dotted_name;
       contents: t }
+  and partial =
+    { indent: int;
+      name: name;
+      contents: t option Lazy.t }
   and t =
     { loc : loc;
       desc : desc }
 end
 
 module No_locs = struct
+  [@@@warning "-30"]
+
   type t =
     | String of string
     | Escaped of dotted_name
     | Section of section
     | Unescaped of dotted_name
-    | Partial of (int * name)
-    (* The integer indicates the level of indentation that will be applied to
-       the partial contents. *)
+    | Partial of partial
     | Inverted_section of section
     | Concat of t list
     | Comment of string
   and section =
     { name: dotted_name;
       contents: t }
+  and partial =
+    { indent: int;
+      name: name;
+      contents: t option Lazy.t }
 end
 
 exception Invalid_param of string

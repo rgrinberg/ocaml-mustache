@@ -41,6 +41,10 @@ module Json = struct
   let value: t -> value = fun t -> (t :> value)
 end
 
+let option_map o f = match o with
+  | None -> None
+  | Some x -> Some (f x)
+
 let escape_html s =
   let b = Buffer.create (String.length s) in
   String.iter ( function
@@ -67,12 +71,16 @@ and erase_locs_desc = function
   | Locs.Escaped s -> No_locs.Escaped s
   | Locs.Section s -> No_locs.Section (erase_locs_section s)
   | Locs.Unescaped s -> No_locs.Unescaped s
-  | Locs.Partial s -> No_locs.Partial s
+  | Locs.Partial p -> No_locs.Partial (erase_locs_partial p)
   | Locs.Inverted_section s -> No_locs.Inverted_section (erase_locs_section s)
   | Locs.Concat l -> No_locs.Concat (List.map erase_locs l)
   | Locs.Comment s -> No_locs.Comment s
 and erase_locs_section { Locs.name; Locs.contents } =
   { No_locs.name; No_locs.contents = erase_locs contents }
+and erase_locs_partial { Locs.indent; Locs.name; Locs.contents } =
+  { No_locs.indent;
+    No_locs.name;
+    No_locs.contents = lazy (option_map (Lazy.force contents) erase_locs) }
 
 let rec add_dummy_locs t =
   { Locs.loc = dummy_loc;
@@ -82,13 +90,17 @@ and add_dummy_locs_desc = function
   | No_locs.Escaped s -> Locs.Escaped s
   | No_locs.Section s -> Locs.Section (add_dummy_locs_section s)
   | No_locs.Unescaped s -> Locs.Unescaped s
-  | No_locs.Partial s -> Locs.Partial s
+  | No_locs.Partial p -> Locs.Partial (add_dummy_locs_partial p)
   | No_locs.Inverted_section s ->
     Locs.Inverted_section (add_dummy_locs_section s)
   | No_locs.Concat l -> Locs.Concat (List.map add_dummy_locs l)
   | No_locs.Comment s -> Locs.Comment s
 and add_dummy_locs_section { No_locs.name; No_locs.contents } =
   { Locs.name; Locs.contents = add_dummy_locs contents }
+and add_dummy_locs_partial { No_locs.indent; No_locs.name; No_locs.contents } =
+  { Locs.indent;
+    Locs.name;
+    Locs.contents = lazy (option_map (Lazy.force contents) add_dummy_locs) }
 
 (* Printing: defined on the ast without locations. *)
 
@@ -112,8 +124,8 @@ let rec pp fmt =
     Format.fprintf fmt "{{#%a}}%a{{/%a}}"
       pp_dotted_name s.name pp s.contents pp_dotted_name s.name
 
-  | Partial (_, s) ->
-    Format.fprintf fmt "{{> %s }}" s
+  | Partial p ->
+    Format.fprintf fmt "{{> %s }}" p.name
 
   | Comment s ->
     Format.fprintf fmt "{{! %s }}" s
@@ -128,7 +140,17 @@ let to_string x =
   Format.pp_print_flush fmt () ;
   Buffer.contents b
 
-(* Rendering: defined on the ast without locations. *)
+(* Parsing: produces an ast with locations. *)
+
+let parse_lx (lexbuf: Lexing.lexbuf) : Locs.t =
+  MenhirLib.Convert.Simplified.traditional2revised
+    Mustache_parser.mustache
+    Mustache_lexer.(handle_standalone mustache lexbuf)
+
+let of_string s = parse_lx (Lexing.from_string s)
+
+(* Utility module, that helps looking up values in the json data during the
+   rendering phase. *)
 
 module Lookup = struct
   let scalar ?(strict=true) = function
@@ -176,161 +198,11 @@ module Lookup = struct
 
 end
 
-let render_fmt
-      ?(strict = true)
-      ?(partials = fun _ -> None)
-      (fmt : Format.formatter) (m : No_locs.t) (js : Json.t)
-  =
-  let open No_locs in
-  let add_context ctx js =
-    match (ctx, js) with
-    | `O ctx_o, `O js_o -> `O (ctx_o @ js_o)
-    | _, _ -> ctx
-  in
-
-  let print_indent indent =
-    for i = 0 to indent - 1 do
-      Format.pp_print_char fmt ' '
-    done
-  in
-
-  let beginning_of_line = ref true in
-
-  let align indent =
-    if !beginning_of_line then (
-      print_indent indent;
-      beginning_of_line := false
-    )
-  in
-
-  let print_indented_string indent s =
-    let lines = Mustache_lexer.split_on_char '\n' s in
-    align indent; Format.pp_print_string fmt (List.hd lines);
-    List.iter (fun line ->
-      Format.pp_print_char fmt '\n';
-      beginning_of_line := true;
-      if line <> "" then (
-        align indent;
-        Format.pp_print_string fmt line
-      )
-    ) (List.tl lines)
-  in
-
-  let rec render' indent m (js : Json.value) = match m with
-
-    | String s ->
-      print_indented_string indent s
-
-    | Escaped name ->
-      align indent;
-      Format.pp_print_string fmt (escape_html (Lookup.str ~strict ~key:name js))
-
-    | Unescaped name ->
-      align indent;
-      Format.pp_print_string fmt (Lookup.str ~strict ~key:name js)
-
-    | Inverted_section s ->
-      if Lookup.inverted js s.name
-      then render' indent s.contents js
-
-    | Section s ->
-      begin match Lookup.section ~strict js ~key:s.name with
-      | `Bool false -> ()
-      | `Bool true  -> render' indent s.contents js
-      | `A contexts -> List.iter (fun ctx -> render' indent s.contents (add_context ctx js)) contexts
-      | context     -> render' indent s.contents (add_context context js)
-      end
-
-    | Partial (partial_indent, name) ->
-      begin match (partials name, strict) with
-      | Some p, _ -> render' (indent + partial_indent) p js
-      | None, false -> ()
-      | None, true -> raise (Missing_partial name)
-      end
-
-    | Comment c -> ()
-
-    | Concat templates ->
-      List.iter (fun x -> render' indent x js) templates
-
-  in render' 0 m (Json.value js)
-
-let render ?strict ?partials (m : No_locs.t) (js : Json.t) =
-  let b = Buffer.create 0 in
-  let fmt = Format.formatter_of_buffer b in
-  render_fmt ?strict ?partials fmt m js ;
-  Format.pp_print_flush fmt () ;
-  Buffer.contents b
-
-(* Parsing: produces an ast with locations. *)
-
-let parse_lx (lexbuf: Lexing.lexbuf) : Locs.t =
-  MenhirLib.Convert.Simplified.traditional2revised
-    Mustache_parser.mustache
-    Mustache_lexer.(handle_standalone mustache lexbuf)
-
-let of_string s = parse_lx (Lexing.from_string s)
-
 (* Packing up everything in two modules of similar signature:
-   [With_locations] and [Without_locations].
+   [Without_locations] and [With_locations]. In the toplevel signature, only
+   [With_locations] appears, and [Without_locations] contents are directly
+   included at the toplevel.
 *)
-
-module With_locations = struct
-  include Locs
-
-  let dummy_loc = dummy_loc
-  let parse_lx = parse_lx
-  let of_string = of_string
-
-  let pp fmt x = pp fmt (erase_locs x)
-  let to_formatter = pp
-
-  let to_string x = to_string (erase_locs x)
-
-  let partials_erase_locs partials =
-    let map o f = match o with Some x -> Some (f x) | None -> None in
-    map partials (fun f name -> map (f name) erase_locs)
-
-  let render_fmt ?strict ?partials fmt m js =
-    render_fmt ?strict ?partials:(partials_erase_locs partials) fmt (erase_locs m) js
-
-  let render ?strict ?partials m js =
-    render ?strict ?partials:(partials_erase_locs partials) (erase_locs m) js
-
-  let rec fold ~string ~section ~escaped ~unescaped ~partial ~comment ~concat t =
-    let go = fold ~string ~section ~escaped ~unescaped ~partial ~comment ~concat in
-    let { desc; loc } = t in
-    match desc with
-    | String s -> string ~loc s
-    | Escaped s -> escaped ~loc s
-    | Unescaped s -> unescaped ~loc s
-    | Comment s -> comment ~loc s
-    | Section { name; contents } ->
-      section ~loc ~inverted:false name (go contents)
-    | Inverted_section { name; contents } ->
-      section ~loc ~inverted:true name (go contents)
-    | Concat ms ->
-      concat ~loc (List.map ms ~f:go)
-    | Partial (i, p) -> partial ~loc i p
-
-  module Infix = struct
-    let (^) t1 t2 = { desc = Concat [t1; t2]; loc = dummy_loc }
-  end
-
-  let raw ~loc s = { desc = String s; loc }
-  let escaped ~loc s = { desc = Escaped s; loc }
-  let unescaped ~loc s = { desc = Unescaped s; loc }
-  let section ~loc n c =
-    { desc = Section { name = n; contents = c };
-      loc }
-  let inverted_section ~loc n c =
-    { desc = Inverted_section { name = n; contents = c };
-      loc }
-  let partial ~loc ?(indent = 0) s = { desc = Partial (indent, s); loc }
-  let concat ~loc t = { desc = Concat t; loc }
-  let comment ~loc s = { desc = Comment s; loc }
-
-end
 
 module Without_locations = struct
   include No_locs
@@ -356,7 +228,7 @@ module Without_locations = struct
       section ~inverted:true name (go contents)
     | Concat ms ->
       concat (List.map ms ~f:go)
-    | Partial (i, p) -> partial i p
+    | Partial p -> partial p.indent p.name p.contents
 
   module Infix = struct
     let (^) y x = Concat [x; y]
@@ -367,10 +239,192 @@ module Without_locations = struct
   let unescaped s = Unescaped s
   let section n c = Section { name = n ; contents = c }
   let inverted_section n c = Inverted_section { name = n ; contents = c }
-  let partial ?(indent = 0) s = Partial (indent, s)
+  let partial ?(indent = 0) n c = Partial { indent ; name = n ; contents = c }
   let concat t = Concat t
   let comment s = Comment s
+
+  let rec expand_partials (partials : name -> t option) : t -> t =
+    let section ~inverted =
+      if inverted then inverted_section else section
+    in
+    let partial indent name contents =
+      let contents' = lazy (
+        match Lazy.force contents with
+        | None -> option_map (partials name) (expand_partials partials)
+        | Some t_opt -> Some t_opt
+      )
+      in
+      partial ~indent name contents'
+    in
+    fold ~string:raw ~section ~escaped ~unescaped ~partial ~comment ~concat
+
+  (* Rendering: defined on the ast without locations. *)
+
+  let render_fmt
+        ?(strict = true)
+        ?(partials = fun _ -> None)
+        (fmt : Format.formatter) (m : No_locs.t) (js : Json.t)
+    =
+    let add_context ctx js =
+      match (ctx, js) with
+      | `O ctx_o, `O js_o -> `O (ctx_o @ js_o)
+      | _, _ -> ctx
+    in
+
+    let print_indent indent =
+      for i = 0 to indent - 1 do
+        Format.pp_print_char fmt ' '
+      done
+    in
+
+    let beginning_of_line = ref true in
+
+    let align indent =
+      if !beginning_of_line then (
+        print_indent indent;
+        beginning_of_line := false
+      )
+    in
+
+    let print_indented_string indent s =
+      let lines = Mustache_lexer.split_on_char '\n' s in
+      align indent; Format.pp_print_string fmt (List.hd lines);
+      List.iter (fun line ->
+        Format.pp_print_char fmt '\n';
+        beginning_of_line := true;
+        if line <> "" then (
+          align indent;
+          Format.pp_print_string fmt line
+        )
+      ) (List.tl lines)
+    in
+
+    let rec render' indent m (js : Json.value) = match m with
+
+      | String s ->
+        print_indented_string indent s
+
+      | Escaped name ->
+        align indent;
+        Format.pp_print_string fmt (escape_html (Lookup.str ~strict ~key:name js))
+
+      | Unescaped name ->
+        align indent;
+        Format.pp_print_string fmt (Lookup.str ~strict ~key:name js)
+
+      | Inverted_section s ->
+        if Lookup.inverted js s.name
+        then render' indent s.contents js
+
+      | Section s ->
+        begin match Lookup.section ~strict js ~key:s.name with
+        | `Bool false -> ()
+        | `Bool true  -> render' indent s.contents js
+        | `A contexts -> List.iter (fun ctx -> render' indent s.contents (add_context ctx js)) contexts
+        | context     -> render' indent s.contents (add_context context js)
+        end
+
+      | Partial { indent = partial_indent; name; contents } ->
+        begin match (Lazy.force contents, strict) with
+        | Some p, _ -> render' (indent + partial_indent) p js
+        | None, false -> ()
+        | None, true -> raise (Missing_partial name)
+        end
+
+      | Comment c -> ()
+
+      | Concat templates ->
+        List.iter (fun x -> render' indent x js) templates
+
+    in render' 0 (expand_partials partials m) (Json.value js)
+
+  let render ?strict ?partials (m : t) (js : Json.t) =
+    let b = Buffer.create 0 in
+    let fmt = Format.formatter_of_buffer b in
+    render_fmt ?strict ?partials fmt m js ;
+    Format.pp_print_flush fmt () ;
+    Buffer.contents b
+
 end
+
+module With_locations = struct
+  include Locs
+
+  let dummy_loc = dummy_loc
+  let parse_lx = parse_lx
+  let of_string = of_string
+
+  let pp fmt x = pp fmt (erase_locs x)
+  let to_formatter = pp
+
+  let to_string x = to_string (erase_locs x)
+
+  let partials_erase_locs partials =
+    option_map partials (fun f name -> option_map (f name) erase_locs)
+
+  let render_fmt ?strict ?partials fmt m js =
+    Without_locations.render_fmt
+      ?strict
+      ?partials:(partials_erase_locs partials)
+      fmt (erase_locs m) js
+
+  let render ?strict ?partials m js =
+    Without_locations.render
+      ?strict
+      ?partials:(partials_erase_locs partials)
+      (erase_locs m) js
+
+  let rec fold ~string ~section ~escaped ~unescaped ~partial ~comment ~concat t =
+    let go = fold ~string ~section ~escaped ~unescaped ~partial ~comment ~concat in
+    let { desc; loc } = t in
+    match desc with
+    | String s -> string ~loc s
+    | Escaped s -> escaped ~loc s
+    | Unescaped s -> unescaped ~loc s
+    | Comment s -> comment ~loc s
+    | Section { name; contents } ->
+      section ~loc ~inverted:false name (go contents)
+    | Inverted_section { name; contents } ->
+      section ~loc ~inverted:true name (go contents)
+    | Concat ms ->
+      concat ~loc (List.map ms ~f:go)
+    | Partial p -> partial ~loc p.indent p.name p.contents
+
+  module Infix = struct
+    let (^) t1 t2 = { desc = Concat [t1; t2]; loc = dummy_loc }
+  end
+
+  let raw ~loc s = { desc = String s; loc }
+  let escaped ~loc s = { desc = Escaped s; loc }
+  let unescaped ~loc s = { desc = Unescaped s; loc }
+  let section ~loc n c =
+    { desc = Section { name = n; contents = c };
+      loc }
+  let inverted_section ~loc n c =
+    { desc = Inverted_section { name = n; contents = c };
+      loc }
+  let partial ~loc ?(indent = 0) n c =
+    { desc = Partial { indent; name = n; contents = c };
+      loc }
+  let concat ~loc t = { desc = Concat t; loc }
+  let comment ~loc s = { desc = Comment s; loc }
+
+  let rec expand_partials (partials : name -> t option) : t -> t =
+    let section ~loc ~inverted =
+      if inverted then inverted_section ~loc else section ~loc
+    in
+    let partial ~loc indent name contents =
+      let contents' = lazy (
+        match Lazy.force contents with
+        | None -> option_map (partials name) (expand_partials partials)
+        | Some t_opt -> Some t_opt
+      )
+      in
+      partial ~loc ~indent name contents'
+    in
+    fold ~string:raw ~section ~escaped ~unescaped ~partial ~comment ~concat
+end
+
 
 (* Include [Without_locations] at the toplevel, to preserve backwards
    compatibility of the API. *)
