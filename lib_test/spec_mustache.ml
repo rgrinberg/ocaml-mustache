@@ -10,6 +10,7 @@ type test = {
   from_file: string;
   name: string;
   data: J.t;
+  partials: (Mustache.name * Mustache.t) list;
   template: string;
   expected: string;
   desc: string;
@@ -23,8 +24,12 @@ let apply_mustache test =
         test.name test.from_file;
       raise e
   in
+  let partials name =
+    try Some (List.assoc name test.partials)
+    with Not_found -> None
+  in
   let rendered =
-    try Mustache.render ~strict:false tmpl test.data
+    try Mustache.render ~strict:false ~partials tmpl test.data
     with e ->
       Printf.eprintf "Rendering of test %s from %s failed.\n"
         test.name test.from_file;
@@ -53,10 +58,25 @@ let load_test_file f =
 
   let test_of_json j =
     let test_name = J.find j ["name"] |> J.get_string in
+    let parse_partials j =
+      if not (J.mem j ["partials"]) then
+        []
+      else
+        J.find j ["partials"]
+        |> J.get_dict
+        |> List.map (fun (name, tmpl) ->
+          try (name, Mustache.of_string (J.get_string tmpl))
+          with e ->
+            Printf.eprintf "Parsing of partial %s of test %s failed\n"
+              name test_name;
+            raise e
+        )
+    in
     {
       from_file = f;
       name = test_name;
       data = J.find j ["data"] |> j_of_data;
+      partials = parse_partials j;
       template = J.find j ["template"] |> J.get_string;
       expected = J.find j ["expected"] |> J.get_string;
       desc = J.find j ["desc"] |> J.get_string;
@@ -75,7 +95,7 @@ let specs = [
   "comments.json";
   "interpolation.json";
   "inverted.json";
-  (* "partials.json"; *)
+  "partials.json";
   "sections.json";
 ]
 

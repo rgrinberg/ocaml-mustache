@@ -5,6 +5,9 @@ exception Invalid_template of string
 (** Raised when a missing variable in a template is not substituted *)
 exception Missing_variable of string
 exception Missing_section of string
+exception Missing_partial of string
+
+[@@@warning "-30"]
 
 module Json : sig (** Compatible with Ezjsonm *)
   type value =
@@ -28,13 +31,17 @@ type t =
   | Escaped of dotted_name
   | Section of section
   | Unescaped of dotted_name
-  | Partial of name
+  | Partial of partial
   | Inverted_section of section
   | Concat of t list
   | Comment of string
 and section =
   { name: dotted_name;
     contents: t }
+and partial =
+  { indent: int;
+    name: name;
+    contents: t option Lazy.t }
 
 (** Read *)
 val parse_lx : Lexing.lexbuf -> t
@@ -52,12 +59,23 @@ val to_formatter : Format.formatter -> t -> unit
 val to_string : t -> string
 
 (** [render_fmt fmt template json] render [template], filling it
-    with data from [json], printing it to formatter [fmt]. *)
-val render_fmt : ?strict:bool -> Format.formatter -> t -> Json.t -> unit
+    with data from [json], printing it to formatter [fmt].
+
+    For each partial [p], if [partials p] is [Some t] then the partial is
+    substituted by [t]. Otherwise, the partial is substituted by the empty
+    string is [strict] is [false]. If [strict] is [true], the [Missing_partial
+    p] exception is raised. *)
+val render_fmt :
+  ?strict:bool ->
+  ?partials:(name -> t option) ->
+  Format.formatter -> t -> Json.t -> unit
 
 (** [render template json] use [render_fmt] to render [template]
     with data from [json] and returns the resulting string. *)
-val render : ?strict:bool -> t -> Json.t -> string
+val render :
+  ?strict:bool ->
+  ?partials:(name -> t option) ->
+  t -> Json.t -> string
 
 (** [fold template] is the composition of [f] over parts of [template], called
     in order of occurrence, where each [f] is one of the labelled arguments
@@ -73,14 +91,16 @@ val fold : string: (string -> 'a) ->
   section: (inverted:bool -> dotted_name -> 'a -> 'a) ->
   escaped: (dotted_name -> 'a) ->
   unescaped: (dotted_name -> 'a) ->
-  partial: (name -> 'a) ->
+  partial: (int -> name -> t option Lazy.t -> 'a) ->
   comment: (string -> 'a) ->
   concat:('a list -> 'a) ->
   t -> 'a
 
-val expand_partials : (name -> t) -> t -> t
-(** [expand_partials f template] is [template] with [f p] substituted for each
-    partial [p]. *)
+val expand_partials : (name -> t option) -> t -> t
+(** [expand_partials f template] is [template] where for each [Partial p] node,
+    [p.contents] now evaluates to [f p.name] if they were evaluating to
+    [None]. Note that no lazy is forced at this point, and calls to [f] are
+    delayed until [p.contents] is forced. *)
 
 (** Shortcut for concatening two templates pieces. *)
 module Infix : sig
@@ -107,7 +127,7 @@ val inverted_section : dotted_name -> t -> t
 val section : dotted_name -> t -> t
 
 (** [{{> box}}] *)
-val partial : name -> t
+val partial : ?indent:int -> name -> t option Lazy.t -> t
 
 (** [{{! this is a comment}}] *)
 val comment : string -> t
@@ -127,13 +147,17 @@ module With_locations : sig
     | Escaped of dotted_name
     | Section of section
     | Unescaped of dotted_name
-    | Partial of name
+    | Partial of partial
     | Inverted_section of section
     | Concat of t list
     | Comment of string
   and section =
     { name: dotted_name;
       contents: t }
+  and partial =
+    { indent: int;
+      name: name;
+      contents: t option Lazy.t }
   and t =
     { loc : loc;
       desc : desc }
@@ -158,12 +182,23 @@ module With_locations : sig
   val to_string : t -> string
 
   (** [render_fmt fmt template json] render [template], filling it
-      with data from [json], printing it to formatter [fmt]. *)
-  val render_fmt : ?strict:bool -> Format.formatter -> t -> Json.t -> unit
+      with data from [json], printing it to formatter [fmt].
+
+      For each partial [p], if [partials p] is [Some t] then the partial is
+      substituted by [t]. Otherwise, the partial is substituted by the empty
+      string is [strict] is [false]. If [strict] is [true], the [Missing_partial
+      p] exception is raised. *)
+  val render_fmt :
+    ?strict:bool ->
+    ?partials:(name -> t option) ->
+    Format.formatter -> t -> Json.t -> unit
 
   (** [render template json] use [render_fmt] to render [template]
       with data from [json] and returns the resulting string. *)
-  val render : ?strict:bool -> t -> Json.t -> string
+  val render :
+    ?strict:bool ->
+    ?partials:(name -> t option) ->
+    t -> Json.t -> string
 
   (** [fold template] is the composition of [f] over parts of [template], called
       in order of occurrence, where each [f] is one of the labelled arguments
@@ -179,14 +214,16 @@ module With_locations : sig
     section: (loc:loc -> inverted:bool -> dotted_name -> 'a -> 'a) ->
     escaped: (loc:loc -> dotted_name -> 'a) ->
     unescaped: (loc:loc -> dotted_name -> 'a) ->
-    partial: (loc:loc -> name -> 'a) ->
+    partial: (loc:loc -> int -> name -> t option Lazy.t -> 'a) ->
     comment: (loc:loc -> string -> 'a) ->
     concat:(loc:loc -> 'a list -> 'a) ->
     t -> 'a
 
-  val expand_partials : (loc:loc -> name -> t) -> t -> t
-  (** [expand_partials f template] is [template] with [f p] substituted for each
-      partial [p]. *)
+  val expand_partials : (name -> t option) -> t -> t
+  (** [expand_partials f template] is [template] where for each [Partial p]
+      node, [p.contents] now evaluates to [f p.name] if they were evaluating to
+      [None]. Note that no lazy is forced at this point, and calls to [f] are
+      delayed until [p.contents] is forced. *)
 
   (** Shortcut for concatening two templates pieces. *)
   module Infix : sig
@@ -211,7 +248,7 @@ module With_locations : sig
   val section : loc:loc -> dotted_name -> t -> t
 
   (** [{{> box}}] *)
-  val partial : loc:loc -> name -> t
+  val partial : loc:loc -> ?indent:int -> name -> t option Lazy.t -> t
 
   (** [{{! this is a comment}}] *)
   val comment : loc:loc -> string -> t

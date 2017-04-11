@@ -48,7 +48,7 @@
 %token <string list> SECTION_INVERT_START
 %token <string list> SECTION_START
 %token <string list> SECTION_END
-%token <string> PARTIAL_START
+%token <int * string> PARTIAL_START
 %token <string list> UNESCAPE_START
 %token <string> COMMENT
 %token UNESCAPE_END
@@ -78,7 +78,12 @@ mustache_element:
   | elt = UNESCAPE_START UNESCAPE_END { with_loc $symbolstartpos $endpos (Unescaped elt) }
   | elt = UNESCAPE_START_AMPERSAND END { with_loc $symbolstartpos $endpos (Unescaped elt) }
   | elt = ESCAPE_START END { with_loc $symbolstartpos $endpos (Escaped elt) }
-  | elt = PARTIAL_START END { with_loc $symbolstartpos $endpos (Partial elt) }
+  | elt = PARTIAL_START END {
+      with_loc $symbolstartpos $endpos
+        (Partial { indent = fst elt;
+                   name = snd elt;
+                   contents = lazy None })
+    }
   | s = COMMENT { with_loc $symbolstartpos $endpos (Comment s) }
   | sec = section { sec }
   | s = RAW { with_loc $symbolstartpos $endpos (String s) }
