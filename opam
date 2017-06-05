@@ -29,7 +29,7 @@ build-test: [
 depends: [
   "ocamlfind" {build}
   "ocamlbuild" {build}
-  "menhir" {build}
+  "menhir"
   "ounit" {test}
   "ezjsonm" {test}
 ]
