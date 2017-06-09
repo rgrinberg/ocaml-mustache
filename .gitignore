@@ -1,5 +1,4 @@
 _build/
-*.native
-setup.log
-setup.data
 TAGS
+*.install
+.merlin

@@ -1,0 +1,11 @@
+(jbuild_version 1)
+
+(ocamllex (mustache_lexer))
+
+(menhir ((modules (mustache_parser))))
+
+(library
+ ((name mustache)
+  (synopsis "Mustache.js templates in OCaml")
+  (libraries (menhirLib))
+  (wrapped false)))

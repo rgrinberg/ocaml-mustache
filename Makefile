@@ -1,42 +1,14 @@
-default: all
-
-conf-no-tests:
-	oasis setup
-	ocaml setup.ml -configure
-
-configure:
-	oasis setup
-	ocaml setup.ml -configure --enable-tests
-
-build:
-	ocaml setup.ml -build
+JBUILDER ?= jbuilder
 
 all:
-	ocaml setup.ml -all
+	@$(JBUILDER) build @install @DEFAULT
 
-test: build
-	ocaml setup.ml -test
+test:
+	@$(JBUILDER) runtest
 
-doc:
-	ocaml setup.ml -doc
+check: test
 
 clean:
-	ocaml setup.ml -clean
+	@$(JBUILDER) clean
 
-scrub: clean
-	ocaml setup.ml -distclean
-	rm -rf _tags
-	rm -rf myocamlbuild.ml
-	rm -rf META
-	rm -rf setup.ml
-
-install:
-	ocaml setup.ml -install
-
-uninstall:
-	ocaml setup.ml -uninstall
-
-reinstall:
-	ocaml setup.ml -reinstall
-
-.PHONY: build all build default install uninstall
+.PHONY: check test all clean
