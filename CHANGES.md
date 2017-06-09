@@ -1,6 +1,6 @@
-### 3.0.1 (unreleased)
+### 3.0.1 (06-09-2017)
 
-* Switch to jbuilder
+* Switch to jbuilder (#30)
 
 ### 3.0.0
 
