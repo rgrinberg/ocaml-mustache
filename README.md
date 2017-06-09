@@ -27,6 +27,13 @@ let rendered =
   Mustache.render tmpl json
 ```
 
+Spec compliance
+-----------
+
+ocaml-mustache complies¹ to the latest [mustache specification](https://github.com/mustache/spec/tree/v1.1.3), and is automatically tested against it.
+
+¹: except for lambdas and set delimiters tags.
+
 Todo/Wish List
 -----------
 * Support for ropes
