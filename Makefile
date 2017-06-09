@@ -11,4 +11,4 @@ check: test
 clean:
 	@$(JBUILDER) clean
 
-.PHONY: check test all
+.PHONY: check test all clean
