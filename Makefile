@@ -8,4 +8,7 @@ test:
 
 check: test
 
+clean:
+	@$(JBUILDER) clean
+
 .PHONY: check test all
