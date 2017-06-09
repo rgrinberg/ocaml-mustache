@@ -6,6 +6,7 @@
 
 (library
  ((name mustache)
+  (public_name mustache)
   (synopsis "Mustache.js templates in OCaml")
   (libraries (menhirLib))
   (wrapped false)))
