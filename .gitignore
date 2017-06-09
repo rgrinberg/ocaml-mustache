@@ -3,3 +3,5 @@ _build/
 setup.log
 setup.data
 TAGS
+*.install
+.merlin
