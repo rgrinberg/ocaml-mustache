@@ -148,6 +148,12 @@ let parse_lx (lexbuf: Lexing.lexbuf) : Locs.t =
     Mustache_lexer.(handle_standalone mustache lexbuf)
 
 let of_string s = parse_lx (Lexing.from_string s)
+let of_channel c = parse_lx (Lexing.from_channel c)
+let of_file f =
+  let c = open_in f in
+  let ret = of_channel c in
+  close_in c;
+  ret
 
 (* Utility module, that helps looking up values in the json data during the
    rendering phase. *)
@@ -209,6 +215,8 @@ module Without_locations = struct
 
   let parse_lx lexbuf = erase_locs (parse_lx lexbuf)
   let of_string s = erase_locs (of_string s)
+  let of_channel c = erase_locs (of_channel c)
+  let of_file f = erase_locs (of_file f)
 
   let pp = pp
   let to_formatter = pp

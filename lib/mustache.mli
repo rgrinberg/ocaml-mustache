@@ -46,6 +46,8 @@ and partial =
 (** Read *)
 val parse_lx : Lexing.lexbuf -> t
 val of_string : string -> t
+val of_channel : in_channel -> t
+val of_file : string -> t
 
 (** [pp fmt template] print a template as raw mustache to
     the formatter [fmt].  *)
