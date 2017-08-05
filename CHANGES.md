@@ -1,3 +1,7 @@
+### 3.0.2 (08-05-2017)
+
+* Add .descr file to repository
+
 ### 3.0.1 (06-09-2017)
 
 * Switch to jbuilder (#30)
