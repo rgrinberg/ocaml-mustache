@@ -52,6 +52,7 @@ let j_of_data : J.value -> J.t = function
 let load_test_file f =
   let test_j =
     load_file (specs_directory ^/ f)
+    |> Bytes.to_string
     |> J.from_string
     |> J.value
   in
