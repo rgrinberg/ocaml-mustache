@@ -58,7 +58,7 @@
 let blank = [' ' '\t']*
 let newline = ('\n' | "\r\n")
 let raw = [^ '{' '}' '\n']*
-let id = ['a'-'z' 'A'-'Z' '_' '/'] ['a'-'z' 'A'-'Z' '0'-'9' '_' '/']*
+let id = ['a'-'z' 'A'-'Z' '-' '_' '/'] ['a'-'z' 'A'-'Z' '0'-'9' '-' '_' '/']*
 let ident = ('.' | id ('.' id)*)
 
 rule space = parse
@@ -83,7 +83,7 @@ and mustache = parse
   | "{{#"        { SECTION_START (with_space space ident lexbuf |> split_ident) }
   | "{{^"        { SECTION_INVERT_START (with_space space ident lexbuf |> split_ident) }
   | "{{/"        { SECTION_END (with_space space ident lexbuf |> split_ident) }
-  | "{{>"        { PARTIAL_START (0, with_space space id lexbuf) }
+  | "{{>"        { PARTIAL_START (0, with_space space ident lexbuf) }
   | "{{!"        { COMMENT (tok_arg (comment []) lexbuf) }
   | "{{"         { ESCAPE_START (with_space space ident lexbuf |> split_ident) }
   | "}}}"        { UNESCAPE_END }
