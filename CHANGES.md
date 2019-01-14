@@ -2,6 +2,7 @@
 
 * Update opam metadata to 2.0 format (@avsm)
 * Port build to Dune (@avsm)
+* Fix ocamldoc syntax to be compatible with odoc (@avsm)
 
 ### 3.0.2 (08-05-2017)
 

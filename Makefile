@@ -9,4 +9,7 @@ check: test
 clean:
 	@dune clean
 
-.PHONY: check test all clean
+doc:
+	dune build @doc
+
+.PHONY: check test all clean doc
