@@ -14,7 +14,6 @@ depends: [
 build: [
   ["dune" "subst"] {pinned}
   ["dune" "build" "-p" name "-j" jobs]
-  ["dune" "runtest" "-p" name "-j" jobs] {with-test}
 ]
 dev-repo: "git+https://github.com/rgrinberg/ocaml-mustache.git"
 synopsis: "Unix utilitie for Mustache logic-less templates in OCaml"
