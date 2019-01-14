@@ -1,7 +1,16 @@
-(executables
- (names mustache_example mustache_cli)
+(executable
+ (name mustache_example)
+ (modules mustache_example)
+ (libraries mustache ezjsonm))
+
+(executable
+ (name mustache_cli)
+ (public_name mustache-cli)
+ (modules mustache_cli)
+ (package mustache-unix)
  (libraries mustache ezjsonm))
 
 (alias
  (name DEFAULT)
- (deps mustache_example.exe mustache_cli.exe))
+ (package mustache)
+ (deps mustache_example.exe))
