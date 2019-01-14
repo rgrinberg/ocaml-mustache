@@ -6,11 +6,9 @@
  (name runtest)
  (deps test_mustache.exe ../specs/comments.json ../specs/interpolation.json
    ../specs/partials.json ../specs/sections.json ../specs/inverted.json)
- (action
-  (run ${<})))
+ (action (run ./test_mustache.exe)))
 
 (alias
  (name runtest)
  (deps spec_mustache.exe)
- (action
-  (run ${<})))
+ (action (run %{deps})))
