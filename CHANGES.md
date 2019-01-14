@@ -1,3 +1,8 @@
+### 3.1.0
+
+* Update opam metadata to 2.0 format (@avsm)
+* Port build to Dune (@avsm)
+
 ### 3.0.2 (08-05-2017)
 
 * Add .descr file to repository

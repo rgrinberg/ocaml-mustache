@@ -1,0 +1,7 @@
+(executables
+ (names mustache_example mustache_cli)
+ (libraries mustache ezjsonm))
+
+(alias
+ (name DEFAULT)
+ (deps mustache_example.exe mustache_cli.exe))
