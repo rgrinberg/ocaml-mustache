@@ -3,14 +3,3 @@
  (modules mustache_example)
  (libraries mustache ezjsonm))
 
-(executable
- (name mustache_cli)
- (public_name mustache-cli)
- (modules mustache_cli)
- (package mustache-unix)
- (libraries mustache ezjsonm))
-
-(alias
- (name DEFAULT)
- (package mustache)
- (deps mustache_example.exe))
