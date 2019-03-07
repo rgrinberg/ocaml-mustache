@@ -1,0 +1,7 @@
+(executable
+ (name mustache_cli)
+ (public_name mustache-cli)
+ (modules mustache_cli)
+ (package mustache-unix)
+ (libraries mustache ezjsonm))
+

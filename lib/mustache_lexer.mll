@@ -22,7 +22,6 @@
 {
   open Lexing
   open Mustache_parser
-  open Mustache_types
 
   let tok_arg f lexbuf =
     let start_p = lexbuf.Lexing.lex_start_p in
@@ -106,7 +105,7 @@ and mustache = parse
        let loc_end = get_loc () in
        (tok, loc_start, loc_end)
      in
-     let rec slurp_line () =
+     let slurp_line () =
        let rec loop acc =
          let tok = get_tok () in
          match tok with
@@ -124,7 +123,7 @@ and mustache = parse
        done;
        !ret
      in
-     let rec skip_blanks l =
+     let skip_blanks l =
        let rec loop skipped = function
          | (RAW s, _, _) :: toks when is_blank s ->
            loop (skipped + String.length s) toks

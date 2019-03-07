@@ -1,28 +1,15 @@
-JBUILDER ?= jbuilder
-
 all:
-	@$(JBUILDER) build @install @DEFAULT
+	dune build
 
 test:
-	@$(JBUILDER) runtest
+	dune runtest
 
 check: test
 
 clean:
-	@$(JBUILDER) clean
+	@dune clean
 
-.PHONY: check test all clean
+doc:
+	dune build @doc
 
-REPO=../opam-repository
-PACKAGES=$(REPO)/packages
-
-pkg-%:
-	topkg opam pkg -n $*
-	mkdir -p $(PACKAGES)/$*
-	cp -r _build/$*.* $(PACKAGES)/$*/
-	rm -f $(PACKAGES)/$*/$*.opam
-	cd $(PACKAGES) && git add $*
-
-PKGS=$(basename $(wildcard *.opam))
-opam-pkg:
-	$(MAKE) $(PKGS:%=pkg-%)
+.PHONY: check test all clean doc

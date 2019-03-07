@@ -63,8 +63,8 @@ val to_string : t -> string
 
     For each partial [p], if [partials p] is [Some t] then the partial is
     substituted by [t]. Otherwise, the partial is substituted by the empty
-    string is [strict] is [false]. If [strict] is [true], the [Missing_partial
-    p] exception is raised. *)
+    string is [strict] is [false]. If [strict] is [true], the
+    {!Missing_partial} exception is raised. *)
 val render_fmt :
   ?strict:bool ->
   ?partials:(name -> t option) ->
@@ -186,8 +186,8 @@ module With_locations : sig
 
       For each partial [p], if [partials p] is [Some t] then the partial is
       substituted by [t]. Otherwise, the partial is substituted by the empty
-      string is [strict] is [false]. If [strict] is [true], the [Missing_partial
-      p] exception is raised. *)
+      string is [strict] is [false]. If [strict] is [true], the {!Missing_partial}
+      exception is raised. *)
   val render_fmt :
     ?strict:bool ->
     ?partials:(name -> t option) ->

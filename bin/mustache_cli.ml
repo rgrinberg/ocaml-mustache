@@ -20,7 +20,7 @@ let run json_filename template_filename =
   apply_mustache j t
 
 let usage () =
-  print_endline "Usage: $0 json_filename template_filename"
+  print_endline "Usage: mustache-cli json_filename template_filename"
 
 let () =
   match Sys.argv with

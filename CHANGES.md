@@ -1,3 +1,11 @@
+### 3.1.0
+
+* Add a `mustache-unix` package under which `mustache-cli` is installed. (@avsm)
+* Update opam metadata to 2.0 format (@avsm)
+* Port build to Dune (@avsm)
+* Fix ocamldoc syntax to be compatible with odoc (@avsm)
+* Test OCaml 4.06 and 4.07 as well (@avsm)
+
 ### 3.0.2 (08-05-2017)
 
 * Add .descr file to repository

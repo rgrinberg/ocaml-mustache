@@ -19,7 +19,8 @@
    LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
    FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
    IN THE SOFTWARE. }}}*)
-open MoreLabels
+
+[@@@warning "-6"]
 include Mustache_types
 
 module List = ListLabels
@@ -272,7 +273,7 @@ module Without_locations = struct
     in
 
     let print_indent indent =
-      for i = 0 to indent - 1 do
+      for _ = 0 to indent - 1 do
         Format.pp_print_char fmt ' '
       done
     in
@@ -331,7 +332,7 @@ module Without_locations = struct
         | None, true -> raise (Missing_partial name)
         end
 
-      | Comment c -> ()
+      | Comment _c -> ()
 
       | Concat templates ->
         List.iter (fun x -> render' indent x js) templates

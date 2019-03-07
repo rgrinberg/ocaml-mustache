@@ -1,3 +1,4 @@
+[@@@warning "-6"]
 open OUnit2
 open Mustache
 
