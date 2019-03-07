@@ -6,7 +6,7 @@ homepage: "https://github.com/rgrinberg/ocaml-mustache"
 doc: "http://rgrinberg.github.io/mustache/"
 bug-reports: "https://github.com/rgrinberg/ocaml-mustache/issues"
 depends: [
-  "ocaml" {>= "4.02.3"}
+  "ocaml" {>= "4.03"}
   "dune" {build}
   "base-unix"
   "mustache"

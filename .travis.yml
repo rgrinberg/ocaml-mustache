@@ -9,7 +9,6 @@ env:
   - PACKAGE="mustache"
   - PINS="mustache-unix:. mustache:."
   matrix:
-  - DISTRO="debian-stable" OCAML_VERSION="4.02"
   - DISTRO="debian-stable" OCAML_VERSION="4.03"
   - DISTRO="debian-testing" OCAML_VERSION="4.04"
   - DISTRO="fedora" OCAML_VERSION="4.05"
