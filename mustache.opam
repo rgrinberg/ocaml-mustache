@@ -8,9 +8,9 @@ bug-reports: "https://github.com/rgrinberg/ocaml-mustache/issues"
 depends: [
   "ocaml" {>= "4.03"}
   "dune" {build}
+  "ezjsonm"
   "menhir"
   "ounit" {with-test}
-  "ezjsonm" {with-test}
 ]
 build: [
   ["dune" "subst"] {pinned}
@@ -21,4 +21,5 @@ dev-repo: "git+https://github.com/rgrinberg/ocaml-mustache.git"
 synopsis: "Mustache logic-less templates in OCaml"
 description: """
 Read and write mustache templates, and render them by providing a json object.
+Contains the `mustache` command line utility for driving logic-less templates.
 """

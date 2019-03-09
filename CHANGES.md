@@ -1,6 +1,6 @@
 ### 3.1.0
 
-* Add a `mustache-unix` package under which `mustache-cli` is installed. (@avsm)
+* Install `mustache` command line utility (@avsm, @anton-trunov)
 * Update opam metadata to 2.0 format (@avsm)
 * Port build to Dune (@avsm)
 * Fix ocamldoc syntax to be compatible with odoc (@avsm)
