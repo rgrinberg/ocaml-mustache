@@ -269,6 +269,7 @@ module Without_locations = struct
     let add_context ctx js =
       match (ctx, js) with
       | `O ctx_o, `O js_o -> `O (ctx_o @ js_o)
+      | _, `O _ -> js
       | _, _ -> ctx
     in
 
