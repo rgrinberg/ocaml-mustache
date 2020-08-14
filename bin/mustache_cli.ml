@@ -2,7 +2,7 @@ let apply_mustache json_data template_data =
   let env = Ezjsonm.from_string json_data
   and tmpl = Mustache.of_string template_data
   in
-  Mustache.render tmpl env |> print_endline
+  Mustache.render tmpl env 
 
 let load_file f =
   let ic = open_in f in
@@ -12,18 +12,28 @@ let load_file f =
   close_in ic;
   (Bytes.to_string s)
 
-let run json_filename template_filename =
+let run ?(prepend_json=ref false) json_filename template_filename =
   let j = load_file json_filename
-  and t = load_file template_filename
-  in
-  print_endline j;
-  apply_mustache j t
-
-let usage () =
-  print_endline "Usage: mustache-cli json_filename template_filename"
+  and t = load_file template_filename in
+  let result = apply_mustache j t in
+  (match prepend_json.contents with
+   | true -> [j; result] |> String.concat ""
+   | false -> result)
+  |> print_endline
 
 let () =
-  match Sys.argv with
-  | [| _ ; json_filename ; template_filename |]
-    -> run json_filename template_filename
-  | _ -> usage ()
+  let usage =   ["Usage: mustache-cli [option] json_filename template_filename";
+                 "   optional arguments:";
+                 "       -p   prepend json in the result";
+                 "       -h   print this usage message and exit";
+                ]
+                |> String.concat "\n"
+  in
+  let prepend_json = ref false in
+  let filenames:string list ref = ref [] in
+  let opts =  [("-p", Arg.Set prepend_json, "prepend json to resulting output");] in
+  Arg.parse opts (fun s -> filenames.contents <- filenames.contents @ [s]) usage;
+  match !filenames with
+  | [ json_filename ; template_filename ]
+    -> run ~prepend_json json_filename template_filename
+  | _ -> ()
