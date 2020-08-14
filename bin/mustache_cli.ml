@@ -22,13 +22,8 @@ let run ?(prepend_json=ref false) json_filename template_filename =
   |> print_endline
 
 let () =
-  let usage =   ["Usage: mustache-cli [option] json_filename template_filename";
-                 "   optional arguments:";
-                 "       -p   prepend json in the result";
-                 "       -h   print this usage message and exit";
-                ]
-                |> String.concat "\n"
-  in
+  let usage =  ["Usage: mustache-cli [option] json_filename template_filename";
+                "  options:"] |> String.concat "\n" in
   let prepend_json = ref false in
   let filenames:string list ref = ref [] in
   let opts =  [("-p", Arg.Set prepend_json, "prepend json to resulting output");] in
@@ -36,4 +31,4 @@ let () =
   match !filenames with
   | [ json_filename ; template_filename ]
     -> run ~prepend_json json_filename template_filename
-  | _ -> ()
+  | _ -> Arg.usage opts usage;
