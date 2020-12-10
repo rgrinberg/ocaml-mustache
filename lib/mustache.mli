@@ -9,7 +9,7 @@ exception Missing_partial of string
 
 [@@@warning "-30"]
 
-module Json : sig (** Compatible with Ezjsonm *)
+module Env : sig (** Compatible with Ezjsonm / Yaml *)
   type value =
     [ `Null
     | `Bool of bool
@@ -85,7 +85,7 @@ val to_string : t -> string
 val render_fmt :
   ?strict:bool ->
   ?partials:(name -> t option) ->
-  Format.formatter -> t -> Json.t -> unit
+  Format.formatter -> t -> Env.t -> unit
 
 (** [render_buf buf template json] renders [template], filling it
     with data from [json], printing it to the buffer [buf].
@@ -93,7 +93,7 @@ val render_fmt :
 val render_buf :
   ?strict:bool ->
   ?partials:(name -> t option) ->
-  Buffer.t -> t -> Json.t -> unit
+  Buffer.t -> t -> Env.t -> unit
 
 (** [render template json] renders [template], filling it
     with data from [json], and returns the resulting string.
@@ -101,7 +101,7 @@ val render_buf :
 val render :
   ?strict:bool ->
   ?partials:(name -> t option) ->
-  t -> Json.t -> string
+  t -> Env.t -> string
 
 (** [fold template] is the composition of [f] over parts of [template], called
     in order of occurrence, where each [f] is one of the labelled arguments
@@ -217,7 +217,7 @@ module With_locations : sig
   val render_fmt :
     ?strict:bool ->
     ?partials:(name -> t option) ->
-    Format.formatter -> t -> Json.t -> unit
+    Format.formatter -> t -> Env.t -> unit
 
   (** [render_buf buf template json] renders [template], filling it
       with data from [json], printing it to the buffer [buf].
@@ -225,7 +225,7 @@ module With_locations : sig
   val render_buf :
     ?strict:bool ->
     ?partials:(name -> t option) ->
-    Buffer.t -> t -> Json.t -> unit
+    Buffer.t -> t -> Env.t -> unit
 
   (** [render template json] renders [template], filling it
       with data from [json], and returns the resulting string.
@@ -233,7 +233,7 @@ module With_locations : sig
   val render :
     ?strict:bool ->
     ?partials:(name -> t option) ->
-    t -> Json.t -> string
+    t -> Env.t -> string
 
   (** [fold template] is the composition of [f] over parts of [template], called
       in order of occurrence, where each [f] is one of the labelled arguments
