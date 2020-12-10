@@ -113,7 +113,8 @@ let () =
     let env  = env_of args.format (load_file args.envname) in
     let tmpl = Mustache.of_string (load_file args.mstname) in
 
-    Mustache.render ~strict:args.strict tmpl env |> print_endline
+    Format.printf "%s%!" 
+      (Mustache.render ~strict:args.strict tmpl env)
 
   with Mustache.Parse_error err ->
     Format.eprintf "%a@." Mustache.pp_error err;
