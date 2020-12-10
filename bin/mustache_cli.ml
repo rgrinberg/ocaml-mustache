@@ -32,12 +32,13 @@ let load_file f =
 
 type args = {
   format  : format;
+  strict  : bool;
   envname : string;
   mstname : string;
 }
 
 let usage =
-  "Usage: mustache [-f json|yaml] filename.{json,yaml} filename.mustache\n"
+  "Usage: mustache [-f json|yaml] [-s] filename.{json,yaml} filename.mustache\n"
 
 let arg_format (format : string) =
   match String.lowercase_ascii format with
@@ -48,11 +49,14 @@ let arg_format (format : string) =
 let () =
   let args =
     let format = ref None in
+    let strict = ref false in
     let extra  = ref [] in
 
     let specs = [
       ("-f", Arg.String (fun s -> format := Some (arg_format s)),
        ": set input format for the environment (= [json|yaml])");
+      ("-s", Arg.Set strict,
+       ": interpret the template in strict mode");
     ] in
       
     try
@@ -90,7 +94,9 @@ let () =
             | _ -> raise (Arg.Bad "cannot guess environment format from extension")
           end in
 
-      { format; envname; mstname; }
+      let strict = !strict in
+
+      { format; strict; envname; mstname; }
 
     with
     | Arg.Bad msg ->
@@ -107,7 +113,7 @@ let () =
     let env  = env_of args.format (load_file args.envname) in
     let tmpl = Mustache.of_string (load_file args.mstname) in
 
-    Mustache.render tmpl env |> print_endline
+    Mustache.render ~strict:args.strict tmpl env |> print_endline
 
   with Mustache.Parse_error err ->
     Format.eprintf "%a@." Mustache.pp_error err;
