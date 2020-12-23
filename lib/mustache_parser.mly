@@ -34,7 +34,7 @@
       in
       raise (Invalid_template msg)
 
-  let with_loc startpos endpos desc =
+  let with_loc (startpos, endpos) desc =
     let loc =
       { loc_start = startpos;
         loc_end = endpos } in
@@ -64,36 +64,36 @@ section:
   | ss = SECTION_INVERT_START END
     e = mustache_expr
     se = SECTION_END END {
-    with_loc $symbolstartpos $endpos
+    with_loc $sloc
       (Inverted_section (parse_section ss se e))
   }
   | ss = SECTION_START END
     e = mustache_expr
     se = SECTION_END END {
-    with_loc $symbolstartpos $endpos
+    with_loc $sloc
       (Section (parse_section ss se e))
   }
 
 mustache_element:
-  | elt = UNESCAPE_START UNESCAPE_END { with_loc $symbolstartpos $endpos (Unescaped elt) }
-  | elt = UNESCAPE_START_AMPERSAND END { with_loc $symbolstartpos $endpos (Unescaped elt) }
-  | elt = ESCAPE_START END { with_loc $symbolstartpos $endpos (Escaped elt) }
+  | elt = UNESCAPE_START UNESCAPE_END { with_loc $sloc (Unescaped elt) }
+  | elt = UNESCAPE_START_AMPERSAND END { with_loc $sloc (Unescaped elt) }
+  | elt = ESCAPE_START END { with_loc $sloc (Escaped elt) }
   | elt = PARTIAL_START END {
-      with_loc $symbolstartpos $endpos
+      with_loc $sloc
         (Partial { indent = fst elt;
                    name = snd elt;
                    contents = lazy None })
     }
-  | s = COMMENT { with_loc $symbolstartpos $endpos (Comment s) }
+  | s = COMMENT { with_loc $sloc (Comment s) }
   | sec = section { sec }
-  | s = RAW { with_loc $symbolstartpos $endpos (String s) }
+  | s = RAW { with_loc $sloc (String s) }
 
 mustache_expr:
   | elts = list(mustache_element) {
     match elts with
-    | [] -> with_loc $symbolstartpos $endpos (String "")
+    | [] -> with_loc $sloc (String "")
     | [x] -> x
-    | xs -> with_loc $symbolstartpos $endpos (Concat xs)
+    | xs -> with_loc $sloc (Concat xs)
   }
 
 mustache:

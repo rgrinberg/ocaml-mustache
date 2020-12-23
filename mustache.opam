@@ -9,7 +9,7 @@ depends: [
   "ocaml" {>= "4.03"}
   "dune" {build}
   "ezjsonm"
-  "menhir"
+  "menhir" {>= "20180703"}
   "ounit" {with-test}
 ]
 build: [
