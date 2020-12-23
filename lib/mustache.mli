@@ -43,9 +43,26 @@ and partial =
     name: name;
     contents: t option Lazy.t }
 
-(** Read *)
+(** Read template files; those function may raise Parse_error *)
+type template_parse_error
+exception Parse_error of template_parse_error
+
 val parse_lx : Lexing.lexbuf -> t
 val of_string : string -> t
+
+(** [pp_error fmt err] prints a human-readable description of
+    a parse error on the given formatter. The function does not
+    flush the formatter (in can you want to use it within boxes),
+    so you should remember to do it yourself.
+
+    {|
+      try ignore (Mustache.of_string "{{!")
+      with Mustache.Parse_error err ->
+        Format.eprintf "%a@." Mustache.pp_error err
+    |}
+*)
+val pp_error : Format.formatter -> template_parse_error -> unit
+
 
 (** [pp fmt template] print a template as raw mustache to
     the formatter [fmt].  *)
