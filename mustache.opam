@@ -6,7 +6,7 @@ homepage: "https://github.com/rgrinberg/ocaml-mustache"
 doc: "http://rgrinberg.github.io/mustache/"
 bug-reports: "https://github.com/rgrinberg/ocaml-mustache/issues"
 depends: [
-  "ocaml" {>= "4.03"}
+  "ocaml" {>= "4.08.0"}
   "dune" {>= "1.4.0"}
   "ezjsonm"
   "menhir" {>= "20180703"}

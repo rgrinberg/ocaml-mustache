@@ -9,8 +9,7 @@ env:
   - PACKAGE="mustache"
   - PINS="mustache:."
   matrix:
-  - DISTRO="debian-stable" OCAML_VERSION="4.03"
-  - DISTRO="debian-testing" OCAML_VERSION="4.04"
-  - DISTRO="fedora" OCAML_VERSION="4.05"
-  - DISTRO="ubuntu-lts" OCAML_VERSION="4.06"
-  - DISTRO="alpine" OCAML_VERSION="4.07"
+  - DISTRO="ubuntu-lts" OCAML_VERSION="4.08"
+  - DISTRO="ubuntu-lts" OCAML_VERSION="4.09"
+  - DISTRO="ubuntu-lts" OCAML_VERSION="4.10"
+  - DISTRO="ubuntu-lts" OCAML_VERSION="4.11"
