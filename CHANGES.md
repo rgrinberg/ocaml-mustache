@@ -1,3 +1,7 @@
+### 3.2.0
+
+* Improve parsing errors by adding locations (@gasche, 47)
+
 ### 3.1.0
 
 * Install `mustache` command line utility (@avsm, @anton-trunov)
