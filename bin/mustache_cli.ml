@@ -1,6 +1,10 @@
 let apply_mustache json_data template_data =
   let env = Ezjsonm.from_string json_data
-  and tmpl = Mustache.of_string template_data
+  and tmpl =
+    try Mustache.of_string template_data
+    with Mustache.Parse_error err ->
+      Format.eprintf "%a@." Mustache.pp_error err;
+      exit 3
   in
   Mustache.render tmpl env |> print_endline
 

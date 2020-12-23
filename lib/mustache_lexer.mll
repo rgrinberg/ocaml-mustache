@@ -23,6 +23,8 @@
   open Lexing
   open Mustache_parser
 
+  exception Error of string
+
   let tok_arg f lexbuf =
     let start_p = lexbuf.Lexing.lex_start_p in
     let x = f lexbuf in
@@ -65,16 +67,19 @@ rule space = parse
   | blank { () }
 
 and id = parse
-  | id { lexeme lexbuf }
+  | id  { lexeme lexbuf }
+  | eof { raise (Error "id expected") }
 
 and ident = parse
   | ident { lexeme lexbuf }
+  | eof   { raise (Error "ident expected") }
 
 and comment acc = parse
   | "}}"        { String.concat "" (List.rev acc) }
   | raw newline { new_line lexbuf; comment ((lexeme lexbuf) :: acc) lexbuf }
   | raw         { comment ((lexeme lexbuf) :: acc) lexbuf }
   | ['{' '}']   { comment ((lexeme lexbuf) :: acc) lexbuf }
+  | eof         { raise (Error "non-terminated comment") }
 
 and mustache = parse
   | "{{{"        { UNESCAPE_START (with_space space ident lexbuf |> split_ident) }

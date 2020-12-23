@@ -142,13 +142,64 @@ let to_string x =
   Buffer.contents b
 
 (* Parsing: produces an ast with locations. *)
+type template_parse_error = {
+  lexbuf: Lexing.lexbuf;
+  kind: error_kind;
+}
+and error_kind = Parsing | Lexing of string
+
+exception Parse_error of template_parse_error
 
 let parse_lx (lexbuf: Lexing.lexbuf) : Locs.t =
-  MenhirLib.Convert.Simplified.traditional2revised
-    Mustache_parser.mustache
-    Mustache_lexer.(handle_standalone mustache lexbuf)
+  try
+    MenhirLib.Convert.Simplified.traditional2revised
+      Mustache_parser.mustache
+      Mustache_lexer.(handle_standalone mustache lexbuf)
+  with
+  | Mustache_lexer.Error msg ->
+    raise (Parse_error { lexbuf; kind = Lexing msg })
+  | Mustache_parser.Error ->
+    raise (Parse_error { lexbuf; kind = Parsing })
 
 let of_string s = parse_lx (Lexing.from_string s)
+
+let pp_error ppf { lexbuf; kind } =
+  let open Lexing in
+  let fname = lexbuf.lex_start_p.pos_fname in
+  let extract pos = (pos.pos_lnum, pos.pos_cnum - pos.pos_bol) in
+  let (start_line, start_col) = extract lexbuf.lex_start_p in
+  let (end_line, end_col) = extract lexbuf.lex_curr_p in
+  let p ppf = Format.fprintf ppf in
+  let pp_range ppf (start, end_) =
+    if start = end_ then
+      p ppf " %d" start
+    else
+      p ppf "s %d-%d" start end_
+  in
+  p ppf "@[";
+  begin if fname <> "" then
+    p ppf "File %S,@ l" fname
+  else
+    p ppf "L"
+  end;
+  p ppf "ine%a,@ character%a:@ "
+    pp_range (start_line, end_line)
+    pp_range (start_col, end_col)
+    ;
+  begin match kind with
+  | Parsing -> p ppf "syntax error"
+  | Lexing msg -> p ppf "%s" msg
+  end;
+  p ppf ".@]"
+
+let () =
+  Printexc.register_printer (function
+    | Parse_error err ->
+      let buf = Buffer.create 42 in
+      Format.fprintf (Format.formatter_of_buffer buf) "Mustache.Parse_error (%a)@." pp_error err;
+      Some (Buffer.contents buf)
+    | _ -> None
+  )
 
 (* Utility module, that helps looking up values in the json data during the
    rendering phase. *)
