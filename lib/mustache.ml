@@ -192,6 +192,15 @@ let pp_error ppf { lexbuf; kind } =
   end;
   p ppf ".@]"
 
+let () =
+  Printexc.register_printer (function
+    | Parse_error err ->
+      let buf = Buffer.create 42 in
+      Format.fprintf (Format.formatter_of_buffer buf) "Mustache.Parse_error (%a)@." pp_error err;
+      Some (Buffer.contents buf)
+    | _ -> None
+  )
+
 (* Utility module, that helps looking up values in the json data during the
    rendering phase. *)
 
