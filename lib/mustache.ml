@@ -422,6 +422,12 @@ module With_locations = struct
       ?partials:(partials_erase_locs partials)
       fmt (erase_locs m) js
 
+  let render_buf ?strict ?partials fmt m js =
+    Without_locations.render_buf
+      ?strict
+      ?partials:(partials_erase_locs partials)
+      fmt (erase_locs m) js
+
   let render ?strict ?partials m js =
     Without_locations.render
       ?strict

@@ -75,7 +75,7 @@ val to_formatter : Format.formatter -> t -> unit
     a string representing the template as raw mustache.  *)
 val to_string : t -> string
 
-(** [render_fmt fmt template json] render [template], filling it
+(** [render_fmt fmt template json] renders [template], filling it
     with data from [json], printing it to formatter [fmt].
 
     For each partial [p], if [partials p] is [Some t] then the partial is
@@ -87,8 +87,17 @@ val render_fmt :
   ?partials:(name -> t option) ->
   Format.formatter -> t -> Json.t -> unit
 
-(** [render template json] use [render_fmt] to render [template]
-    with data from [json] and returns the resulting string. *)
+(** [render_buf buf template json] renders [template], filling it
+    with data from [json], printing it to the buffer [buf].
+    See {!render_fmt} for the optional arguments. *)
+val render_buf :
+  ?strict:bool ->
+  ?partials:(name -> t option) ->
+  Buffer.t -> t -> Json.t -> unit
+
+(** [render template json] renders [template], filling it
+    with data from [json], and returns the resulting string.
+    See {!render_fmt} for the optional arguments. *)
 val render :
   ?strict:bool ->
   ?partials:(name -> t option) ->
@@ -198,20 +207,29 @@ module With_locations : sig
       a string representing the template as raw mustache.  *)
   val to_string : t -> string
 
-  (** [render_fmt fmt template json] render [template], filling it
+  (** [render_fmt fmt template json] renders [template], filling it
       with data from [json], printing it to formatter [fmt].
 
       For each partial [p], if [partials p] is [Some t] then the partial is
       substituted by [t]. Otherwise, the partial is substituted by the empty
-      string is [strict] is [false]. If [strict] is [true], the {!Missing_partial}
-      exception is raised. *)
+      string is [strict] is [false]. If [strict] is [true], the
+      {!Missing_partial} exception is raised. *)
   val render_fmt :
     ?strict:bool ->
     ?partials:(name -> t option) ->
     Format.formatter -> t -> Json.t -> unit
 
-  (** [render template json] use [render_fmt] to render [template]
-      with data from [json] and returns the resulting string. *)
+  (** [render_buf buf template json] renders [template], filling it
+      with data from [json], printing it to the buffer [buf].
+      See {!render_fmt} for the optional arguments. *)
+  val render_buf :
+    ?strict:bool ->
+    ?partials:(name -> t option) ->
+    Buffer.t -> t -> Json.t -> unit
+
+  (** [render template json] renders [template], filling it
+      with data from [json], and returns the resulting string.
+      See {!render_fmt} for the optional arguments. *)
   val render :
     ?strict:bool ->
     ?partials:(name -> t option) ->
