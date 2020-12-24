@@ -312,10 +312,10 @@ module Without_locations = struct
 
   (* Rendering: defined on the ast without locations. *)
 
-  let render_fmt
+  let render_buf
         ?(strict = true)
         ?(partials = fun _ -> None)
-        (fmt : Format.formatter) (m : No_locs.t) (js : Json.t)
+        (buf : Buffer.t) (m : No_locs.t) (js : Json.t)
     =
     let add_context ctx js =
       match (ctx, js) with
@@ -325,7 +325,7 @@ module Without_locations = struct
 
     let print_indent indent =
       for _ = 0 to indent - 1 do
-        Format.pp_print_char fmt ' '
+        Buffer.add_char buf ' '
       done
     in
 
@@ -340,13 +340,13 @@ module Without_locations = struct
 
     let print_indented_string indent s =
       let lines = Mustache_lexer.split_on_char '\n' s in
-      align indent; Format.pp_print_string fmt (List.hd lines);
+      align indent; Buffer.add_string buf (List.hd lines);
       List.iter (fun line ->
-        Format.pp_print_char fmt '\n';
+        Buffer.add_char buf '\n';
         beginning_of_line := true;
         if line <> "" then (
           align indent;
-          Format.pp_print_string fmt line
+          Buffer.add_string buf line;
         )
       ) (List.tl lines)
     in
@@ -358,11 +358,11 @@ module Without_locations = struct
 
       | Escaped name ->
         align indent;
-        Format.pp_print_string fmt (escape_html (Lookup.str ~strict ~key:name js))
+        Buffer.add_string buf (escape_html (Lookup.str ~strict ~key:name js))
 
       | Unescaped name ->
         align indent;
-        Format.pp_print_string fmt (Lookup.str ~strict ~key:name js)
+        Buffer.add_string buf (Lookup.str ~strict ~key:name js)
 
       | Inverted_section s ->
         if Lookup.inverted js s.name
@@ -391,12 +391,14 @@ module Without_locations = struct
     in render' 0 (expand_partials partials m) (Json.value js)
 
   let render ?strict ?partials (m : t) (js : Json.t) =
-    let b = Buffer.create 0 in
-    let fmt = Format.formatter_of_buffer b in
-    render_fmt ?strict ?partials fmt m js ;
-    Format.pp_print_flush fmt () ;
-    Buffer.contents b
+    let buf = Buffer.create 0 in
+    render_buf ?strict ?partials buf m js ;
+    Buffer.contents buf
 
+  let render_fmt ?strict ?partials fmt m js =
+    let str = render ?strict ?partials m js in
+    Format.pp_print_string fmt str;
+    Format.pp_print_flush fmt ()
 end
 
 module With_locations = struct
