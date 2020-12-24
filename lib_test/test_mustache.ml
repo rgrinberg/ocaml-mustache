@@ -93,6 +93,16 @@ let tests = [
     , [ ( `O [ "a" , `A [ `O [ ("x", `Float 1.) ]; `O [ ("x", `Float 2.) ] ] ],
           "12" ) ] ) ;
 
+    ("{{#a}}{{.}}{{/a}}"
+    , section ["a"] (escaped [])
+    , [ ( `O [ "a" , `String "foo" ],
+          "foo" ) ] ) ;
+
+    ("{{#a}}{{a}}{{/a}}"
+    , section ["a"] (escaped ["a"])
+    , [ ( `O [ "a" , `String "foo" ],
+          "foo" ) ] ) ;
+
   ]
 
 let mkloc (lnum_s, bol_s, cnum_s, lnum_e, bol_e, cnum_e) =
