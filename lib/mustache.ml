@@ -302,7 +302,7 @@ end
 module Render = struct
   (* Rendering is defined on the ast without locations. *)
 
-  open No_locs
+  open Locs
 
   (* Render a template whose partials have already been expanded.
 
@@ -316,7 +316,7 @@ module Render = struct
      partial-resolution function. *)
   let render_expanded
         ?(strict = true)
-        (buf : Buffer.t) (m : No_locs.t) (js : Json.t)
+        (buf : Buffer.t) (m : Locs.t) (js : Json.t)
     =
     let print_indent indent =
       for _ = 0 to indent - 1 do
@@ -346,7 +346,7 @@ module Render = struct
       ) (List.tl lines)
     in
 
-    let rec render indent m (ctxs : Contexts.t) = match m with
+    let rec render indent m (ctxs : Contexts.t) = match m.desc with
 
       | String s ->
         print_indented_string indent s
@@ -448,7 +448,8 @@ module Without_locations = struct
 
 
   let render_buf ?strict ?(partials = fun _ -> None) buf (m : t) (js : Json.t) =
-    Render.render_expanded buf ?strict (expand_partials partials m) js
+    let m = add_dummy_locs (expand_partials partials m) in
+    Render.render_expanded buf ?strict m js
 
   let render ?strict ?partials (m : t) (js : Json.t) =
     let buf = Buffer.create 0 in
@@ -472,27 +473,6 @@ module With_locations = struct
   let to_formatter = pp
 
   let to_string x = to_string (erase_locs x)
-
-  let partials_erase_locs partials =
-    option_map partials (fun f name -> option_map (f name) erase_locs)
-
-  let render_fmt ?strict ?partials fmt m js =
-    Without_locations.render_fmt
-      ?strict
-      ?partials:(partials_erase_locs partials)
-      fmt (erase_locs m) js
-
-  let render_buf ?strict ?partials fmt m js =
-    Without_locations.render_buf
-      ?strict
-      ?partials:(partials_erase_locs partials)
-      fmt (erase_locs m) js
-
-  let render ?strict ?partials m js =
-    Without_locations.render
-      ?strict
-      ?partials:(partials_erase_locs partials)
-      (erase_locs m) js
 
   let rec fold ~string ~section ~escaped ~unescaped ~partial ~comment ~concat t =
     let go = fold ~string ~section ~escaped ~unescaped ~partial ~comment ~concat in
@@ -543,6 +523,20 @@ module With_locations = struct
       partial ~loc ~indent name contents'
     in
     fold ~string:raw ~section ~escaped ~unescaped ~partial ~comment ~concat
+
+  let render_buf ?strict ?(partials = fun _ -> None) buf (m : t) (js : Json.t) =
+    let m = expand_partials partials m in
+    Render.render_expanded buf ?strict m js
+
+  let render ?strict ?partials (m : t) (js : Json.t) =
+    let buf = Buffer.create 0 in
+    render_buf ?strict ?partials buf m js ;
+    Buffer.contents buf
+
+  let render_fmt ?strict ?partials fmt m js =
+    let str = render ?strict ?partials m js in
+    Format.pp_print_string fmt str;
+    Format.pp_print_flush fmt ()
 end
 
 
