@@ -1,11 +1,4 @@
 (** A module for creating and rendering mustache templates in OCaml. *)
-exception Invalid_param of string
-exception Invalid_template of string
-
-(** Raised when a missing variable in a template is not substituted *)
-exception Missing_variable of string
-exception Missing_section of string
-exception Missing_partial of string
 
 [@@@warning "-30"]
 
@@ -43,25 +36,25 @@ and partial =
     name: name;
     contents: t option Lazy.t }
 
-(** Read template files; those function may raise Parse_error *)
+(** Read template files; those function may raise [Template_parse_error]. *)
 type template_parse_error
-exception Parse_error of template_parse_error
+exception Template_parse_error of template_parse_error
 
 val parse_lx : Lexing.lexbuf -> t
 val of_string : string -> t
 
-(** [pp_error fmt err] prints a human-readable description of
-    a parse error on the given formatter. The function does not
-    flush the formatter (in can you want to use it within boxes),
-    so you should remember to do it yourself.
+(** [pp_template_parse_error fmt err] prints a human-readable
+    description of a template parse error on the given formatter. The
+    function does not flush the formatter (in case you want to use it
+    within boxes), so you should remember to do it yourself.
 
     {|
       try ignore (Mustache.of_string "{{!")
-      with Mustache.Parse_error err ->
-        Format.eprintf "%a@." Mustache.pp_error err
+      with Mustache.Template_parse_error err ->
+        Format.eprintf "%a@." Mustache.pp_template_parse_error err
     |}
 *)
-val pp_error : Format.formatter -> template_parse_error -> unit
+val pp_template_parse_error : Format.formatter -> template_parse_error -> unit
 
 
 (** [pp fmt template] print a template as raw mustache to
@@ -75,13 +68,28 @@ val to_formatter : Format.formatter -> t -> unit
     a string representing the template as raw mustache.  *)
 val to_string : t -> string
 
+
+(** Render templates; those functions may raise [Render_error]. *)
+type render_error =
+  | Invalid_param of string
+  | Missing_variable of string
+  | Missing_section of string
+  | Missing_partial of string
+
+exception Render_error of render_error
+
 (** [render_fmt fmt template json] renders [template], filling it
     with data from [json], printing it to formatter [fmt].
 
     For each partial [p], if [partials p] is [Some t] then the partial is
     substituted by [t]. Otherwise, the partial is substituted by the empty
-    string is [strict] is [false]. If [strict] is [true], the
-    {!Missing_partial} exception is raised. *)
+    string is [strict] is [false]. If [strict] is [true], a
+    {!Missing_partial} error is raised.
+
+    @raise Render_error when there is a mismatch between the template
+    and the data. The [Missing_*] cases are only raised in strict mode,
+    when [strict] is true.
+*)
 val render_fmt :
   ?strict:bool ->
   ?partials:(name -> t option) ->
@@ -89,7 +97,7 @@ val render_fmt :
 
 (** [render_buf buf template json] renders [template], filling it
     with data from [json], printing it to the buffer [buf].
-    See {!render_fmt} for the optional arguments. *)
+    See {!render_fmt}. *)
 val render_buf :
   ?strict:bool ->
   ?partials:(name -> t option) ->
@@ -97,7 +105,7 @@ val render_buf :
 
 (** [render template json] renders [template], filling it
     with data from [json], and returns the resulting string.
-    See {!render_fmt} for the optional arguments. *)
+    See {!render_fmt}. *)
 val render :
   ?strict:bool ->
   ?partials:(name -> t option) ->
@@ -212,8 +220,13 @@ module With_locations : sig
 
       For each partial [p], if [partials p] is [Some t] then the partial is
       substituted by [t]. Otherwise, the partial is substituted by the empty
-      string is [strict] is [false]. If [strict] is [true], the
-      {!Missing_partial} exception is raised. *)
+      string is [strict] is [false]. If [strict] is [true], a
+      {!Missing_partial} error is raised.
+
+      @raise Render_error when there is a mismatch between the template
+      and the data. The [Missing_*] cases are only raised in strict mode,
+      when [strict] is true.
+  *)
   val render_fmt :
     ?strict:bool ->
     ?partials:(name -> t option) ->
@@ -221,7 +234,7 @@ module With_locations : sig
 
   (** [render_buf buf template json] renders [template], filling it
       with data from [json], printing it to the buffer [buf].
-      See {!render_fmt} for the optional arguments. *)
+      See {!render_fmt}. *)
   val render_buf :
     ?strict:bool ->
     ?partials:(name -> t option) ->
@@ -229,7 +242,7 @@ module With_locations : sig
 
   (** [render template json] renders [template], filling it
       with data from [json], and returns the resulting string.
-      See {!render_fmt} for the optional arguments. *)
+      See {!render_fmt}. *)
   val render :
     ?strict:bool ->
     ?partials:(name -> t option) ->

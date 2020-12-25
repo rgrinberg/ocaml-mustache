@@ -27,49 +27,49 @@ one possible source of error, or both, or none.
 Invalid variable name:
 
   $ mustache reference.json missing-variable.mustache
-  Fatal error: exception Mustache_types.Missing_variable("na")
+  Fatal error: exception Mustache.Render_error(_)
   [2]
 
   $ mustache missing-variable.json reference.mustache
-  Fatal error: exception Mustache_types.Missing_variable("data")
+  Fatal error: exception Mustache.Render_error(_)
   [2]
 
 Invalid section name:
 
   $ mustache reference.json missing-section.mustache
-  Fatal error: exception Mustache_types.Missing_section("na")
+  Fatal error: exception Mustache.Render_error(_)
   [2]
 
   $ mustache missing-section.json reference.mustache
-  Fatal error: exception Mustache_types.Missing_section("group")
+  Fatal error: exception Mustache.Render_error(_)
   [2]
 
 Error in a dotted path foo.bar (one case for the first component, the other in the second).
 
   $ mustache reference.json invalid-dotted-name-1.mustache
-  Fatal error: exception Mustache_types.Missing_variable("gro")
+  Fatal error: exception Mustache.Render_error(_)
   [2]
 
   $ mustache invalid-dotted-name-1.json reference.mustache
-  Fatal error: exception Mustache_types.Missing_section("group")
+  Fatal error: exception Mustache.Render_error(_)
   [2]
 
   $ mustache reference.json invalid-dotted-name-2.mustache
-  Fatal error: exception Mustache_types.Missing_variable("fir")
+  Fatal error: exception Mustache.Render_error(_)
   [2]
 
   $ mustache invalid-dotted-name-2.json reference.mustache
-  Fatal error: exception Mustache_types.Missing_variable("first")
+  Fatal error: exception Mustache.Render_error(_)
   [2]
 
 Non-scalar used as a scalar:
 
   $ mustache reference.json non-scalar.mustache
-  Fatal error: exception Mustache_types.Invalid_param("Lookup.scalar: not a scalar")
+  Fatal error: exception Mustache.Render_error(_)
   [2]
 
   $ mustache non-scalar.json reference.mustache
-  Fatal error: exception Mustache_types.Invalid_param("Lookup.scalar: not a scalar")
+  Fatal error: exception Mustache.Render_error(_)
   [2]
 
 Missing partial (currently the CLI does not support any partial anyway):
@@ -78,5 +78,5 @@ Missing partial (currently the CLI does not support any partial anyway):
 in better `ls` output).
 
   $ mustache reference.json z-missing-partial.mustache
-  Fatal error: exception Mustache_types.Missing_partial("second")
+  Fatal error: exception Mustache.Render_error(_)
   [2]

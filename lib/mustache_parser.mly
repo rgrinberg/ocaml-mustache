@@ -23,6 +23,7 @@
 %{
   open Mustache_types
   open Mustache_types.Locs
+
   let parse_section start_s end_s contents =
     if start_s = end_s
     then { contents; name=start_s }

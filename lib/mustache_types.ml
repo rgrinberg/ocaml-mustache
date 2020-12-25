@@ -82,8 +82,6 @@ module No_locs = struct
       contents: t option Lazy.t }
 end
 
-exception Invalid_param of string
+(* this exception is used internally in the parser,
+   never exposed to users *)
 exception Invalid_template of string
-exception Missing_variable of string
-exception Missing_section of string
-exception Missing_partial of string

@@ -144,11 +144,14 @@ let to_string x =
 (* Parsing: produces an ast with locations. *)
 type template_parse_error = {
   lexbuf: Lexing.lexbuf;
-  kind: error_kind;
+  kind: template_parse_error_kind;
 }
-and error_kind = Parsing | Lexing of string
+and template_parse_error_kind =
+  | Lexing of string
+  | Parsing
+  | Invalid_template of string
 
-exception Parse_error of template_parse_error
+exception Template_parse_error of template_parse_error
 
 let parse_lx (lexbuf: Lexing.lexbuf) : Locs.t =
   try
@@ -157,13 +160,16 @@ let parse_lx (lexbuf: Lexing.lexbuf) : Locs.t =
       Mustache_lexer.(handle_standalone mustache lexbuf)
   with
   | Mustache_lexer.Error msg ->
-    raise (Parse_error { lexbuf; kind = Lexing msg })
+    raise (Template_parse_error { lexbuf; kind = Lexing msg })
   | Mustache_parser.Error ->
-    raise (Parse_error { lexbuf; kind = Parsing })
+    raise (Template_parse_error { lexbuf; kind = Parsing })
+  | Invalid_template msg ->
+    raise (Template_parse_error { lexbuf; kind = Invalid_template msg })
+
 
 let of_string s = parse_lx (Lexing.from_string s)
 
-let pp_error ppf { lexbuf; kind } =
+let pp_template_parse_error ppf { lexbuf; kind } =
   let open Lexing in
   let fname = lexbuf.lex_start_p.pos_fname in
   let extract pos = (pos.pos_lnum, pos.pos_cnum - pos.pos_bol) in
@@ -189,17 +195,29 @@ let pp_error ppf { lexbuf; kind } =
   begin match kind with
   | Parsing -> p ppf "syntax error"
   | Lexing msg -> p ppf "%s" msg
+  | Invalid_template msg -> p ppf "%s" msg
   end;
   p ppf ".@]"
 
 let () =
   Printexc.register_printer (function
-    | Parse_error err ->
+    | Template_parse_error err ->
       let buf = Buffer.create 42 in
-      Format.fprintf (Format.formatter_of_buffer buf) "Mustache.Parse_error (%a)@." pp_error err;
+      Format.fprintf (Format.formatter_of_buffer buf)
+        "Mustache.Template_parse_error (%a)@."
+        pp_template_parse_error err;
       Some (Buffer.contents buf)
     | _ -> None
   )
+
+
+type render_error =
+  | Invalid_param of string
+  | Missing_variable of string
+  | Missing_section of string
+  | Missing_partial of string
+
+exception Render_error of render_error
 
 (* Utility modules, that help looking up values in the json data during the
    rendering phase. *)
@@ -246,12 +264,14 @@ module Lookup = struct
     | `Bool false -> "false"
     | `Float f -> Printf.sprintf "%.12g" f
     | `String s -> s
-    | `A _ | `O _ -> raise (Invalid_param "Lookup.scalar: not a scalar")
+    | `A _ | `O _ ->
+      raise (Render_error (Invalid_param "Lookup.scalar: not a scalar"))
 
   let simple_name ?(strict=true) ctxs n =
     match Contexts.find_name ctxs n with
     | None ->
-      if strict then raise (Missing_variable n) else None
+      if strict then raise (Render_error (Missing_variable n));
+      None
     | Some _ as result -> result
 
   let dotted_name ?(strict=true) ctxs ~key =
@@ -261,11 +281,13 @@ module Lookup = struct
       | n :: ns ->
         match js with
         | `Null | `Float _ | `Bool _
-        | `String _ | `A _ -> raise (Invalid_param ("str. not an object"))
+        | `String _ | `A _ ->
+          raise (Render_error (Invalid_param ("str. not an object")))
         | `O dict ->
           match List.assoc n dict with
           | exception Not_found ->
-            if strict then raise (Missing_variable n) else None
+            if strict then raise (Render_error (Missing_variable n));
+            None
           | js -> lookup js ns
     in
     match key with
@@ -283,7 +305,9 @@ module Lookup = struct
   let section ?(strict=true) ctxs ~key =
     let key_s = string_of_dotted_name key in
     match dotted_name ~strict:false ctxs ~key with
-    | None -> if strict then raise (Missing_section key_s) else `Bool false
+    | None ->
+      if strict then raise (Render_error (Missing_section key_s));
+      `Bool false
     | Some js ->
       match js with
       (* php casting *)
@@ -375,7 +399,7 @@ module Render = struct
         begin match (Lazy.force contents, strict) with
         | Some p, _ -> render (indent + partial_indent) p ctxs
         | None, false -> ()
-        | None, true -> raise (Missing_partial name)
+        | None, true -> raise (Render_error (Missing_partial name))
         end
 
       | Comment _c -> ()
