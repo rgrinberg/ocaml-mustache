@@ -201,8 +201,43 @@ let () =
     | _ -> None
   )
 
-(* Utility module, that helps looking up values in the json data during the
+(* Utility modules, that help looking up values in the json data during the
    rendering phase. *)
+
+module Contexts : sig
+  type t
+  val start : Json.value -> t
+  val top : t -> Json.value
+  val add : t -> Json.value -> t
+  val find_name : t -> string -> Json.value option
+end = struct
+  (* a nonempty stack of contexts, most recent first *)
+  type t = Json.value * Json.value list
+
+  let start js = (js, [])
+
+  let top (js, _rest) = js
+
+  let add (top, rest) ctx = (ctx, top::rest)
+
+  let rec find_name ((top, rest) : t) name =
+    match top with
+    | `Null
+    | `Bool _
+    | `Float _
+    | `String _
+    | `A _
+      -> find_in_rest rest name
+    | `O dict ->
+      match List.assoc name dict with
+      | exception Not_found -> find_in_rest rest name
+      | v -> Some v
+
+  and find_in_rest rest name =
+    match rest with
+    | [] -> None
+    | top :: rest -> find_name (top, rest) name
+end
 
 module Lookup = struct
   let scalar ?(strict=true) = function
@@ -213,27 +248,41 @@ module Lookup = struct
     | `String s -> s
     | `A _ | `O _ -> raise (Invalid_param "Lookup.scalar: not a scalar")
 
-  let rec dotted_name ?(strict=true) (js : Json.value) ~key =
-    match key with
-    | [] -> Some js
-    | n :: ns ->
-      match js with
-      | `Null | `Float _ | `Bool _
-      | `String _ | `A _ -> raise (Invalid_param ("str. not an object"))
-      | `O assoc ->
-        try
-          dotted_name ~strict (List.assoc n assoc) ~key:ns
-        with Not_found ->
-          if strict then raise (Missing_variable n) else None
+  let simple_name ?(strict=true) ctxs n =
+    match Contexts.find_name ctxs n with
+    | None ->
+      if strict then raise (Missing_variable n) else None
+    | Some _ as result -> result
 
-  let str ?(strict=true) (js : Json.value) ~key =
-    match dotted_name ~strict js ~key with
+  let dotted_name ?(strict=true) ctxs ~key =
+    let rec lookup (js : Json.value) ~key =
+      match key with
+      | [] -> Some js
+      | n :: ns ->
+        match js with
+        | `Null | `Float _ | `Bool _
+        | `String _ | `A _ -> raise (Invalid_param ("str. not an object"))
+        | `O dict ->
+          match List.assoc n dict with
+          | exception Not_found ->
+            if strict then raise (Missing_variable n) else None
+          | js -> lookup js ns
+    in
+    match key with
+    | [] -> Some (Contexts.top ctxs)
+    | n :: ns ->
+      match simple_name ~strict ctxs n with
+      | None -> None
+      | Some js -> lookup js ns
+
+  let str ?(strict=true) ctxs ~key =
+    match dotted_name ~strict ctxs ~key with
     | None -> ""
     | Some js -> scalar ~strict js
 
-  let section ?(strict=true) (js : Json.value) ~key =
+  let section ?(strict=true) ctxs ~key =
     let key_s = string_of_dotted_name key in
-    match dotted_name ~strict:false js ~key with
+    match dotted_name ~strict:false ctxs ~key with
     | None -> if strict then raise (Missing_section key_s) else `Bool false
     | Some js ->
       match js with
@@ -242,8 +291,8 @@ module Lookup = struct
       | (`A _ | `O _) as js -> js
       | _ -> js
 
-  let inverted (js : Json.value) ~key =
-    match dotted_name ~strict:false js ~key with
+  let inverted ctxs ~key =
+    match dotted_name ~strict:false ctxs ~key with
     | None -> true
     | Some (`A [] | `Bool false | `Null) -> true
     | _ -> false
@@ -317,12 +366,6 @@ module Without_locations = struct
         ?(partials = fun _ -> None)
         (buf : Buffer.t) (m : No_locs.t) (js : Json.t)
     =
-    let add_context ctx js =
-      match (ctx, js) with
-      | `O ctx_o, `O js_o -> `O (ctx_o @ js_o)
-      | _, _ -> ctx
-    in
-
     let print_indent indent =
       for _ = 0 to indent - 1 do
         Buffer.add_char buf ' '
@@ -351,34 +394,34 @@ module Without_locations = struct
       ) (List.tl lines)
     in
 
-    let rec render' indent m (js : Json.value) = match m with
+    let rec render' indent m (ctxs : Contexts.t) = match m with
 
       | String s ->
         print_indented_string indent s
 
       | Escaped name ->
         align indent;
-        Buffer.add_string buf (escape_html (Lookup.str ~strict ~key:name js))
+        Buffer.add_string buf (escape_html (Lookup.str ~strict ~key:name ctxs))
 
       | Unescaped name ->
         align indent;
-        Buffer.add_string buf (Lookup.str ~strict ~key:name js)
+        Buffer.add_string buf (Lookup.str ~strict ~key:name ctxs)
 
       | Inverted_section s ->
-        if Lookup.inverted js s.name
-        then render' indent s.contents js
+        if Lookup.inverted ctxs s.name
+        then render' indent s.contents ctxs
 
       | Section s ->
-        begin match Lookup.section ~strict js ~key:s.name with
+        let enter ctx = render' indent s.contents (Contexts.add ctxs ctx) in
+        begin match Lookup.section ~strict ctxs ~key:s.name with
         | `Bool false -> ()
-        | `Bool true  -> render' indent s.contents js
-        | `A contexts -> List.iter (fun ctx -> render' indent s.contents (add_context ctx js)) contexts
-        | context     -> render' indent s.contents (add_context context js)
+        | `A elems    -> List.iter enter elems
+        | elem        -> enter elem
         end
 
       | Partial { indent = partial_indent; name; contents } ->
         begin match (Lazy.force contents, strict) with
-        | Some p, _ -> render' (indent + partial_indent) p js
+        | Some p, _ -> render' (indent + partial_indent) p ctxs
         | None, false -> ()
         | None, true -> raise (Missing_partial name)
         end
@@ -386,9 +429,9 @@ module Without_locations = struct
       | Comment _c -> ()
 
       | Concat templates ->
-        List.iter (fun x -> render' indent x js) templates
+        List.iter (fun x -> render' indent x ctxs) templates
 
-    in render' 0 (expand_partials partials m) (Json.value js)
+    in render' 0 (expand_partials partials m) (Contexts.start (Json.value js))
 
   let render ?strict ?partials (m : t) (js : Json.t) =
     let buf = Buffer.create 0 in

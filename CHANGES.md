@@ -2,6 +2,10 @@
 
 * Improve parsing errors by adding locations (@gasche, #47)
 * Add `render_buf` to render templates directly to buffers (@gasche, #48)
+* When a lookup fails in the current context, lookup in parents contexts.
+  This should fix errors when using "{{#foo}}" for a scalar variable
+  'foo' to check that the variable exists.
+  (@gasche, #49)
 
 ### 3.1.0
 
