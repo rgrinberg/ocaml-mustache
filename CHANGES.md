@@ -1,6 +1,7 @@
 ### 3.2.0
 
-* Improve parsing errors by adding locations (@gasche, 47)
+* Improve parsing errors by adding locations (@gasche, #47)
+* Add `render_buf` to render templates directly to buffers (@gasche, #48)
 
 ### 3.1.0
 
