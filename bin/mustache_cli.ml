@@ -1,13 +1,22 @@
+module Mustache = struct
+  include Mustache
+  include With_locations
+end
+
 let apply_mustache json_data template_data =
   let env = Ezjsonm.from_string json_data
   and tmpl =
     try Mustache.of_string template_data
     with Mustache.Template_parse_error err ->
-      Format.eprintf "%a@."
+      Format.eprintf "Template parse error:@\n%a@."
         Mustache.pp_template_parse_error err;
       exit 3
   in
-  Mustache.render tmpl env |> print_endline
+  try Mustache.render tmpl env |> print_endline
+  with Mustache.Render_error err ->
+    Format.eprintf "Template render error:@\n%a@."
+      Mustache.pp_render_error err;
+    exit 2
 
 let load_file f =
   let ic = open_in f in
