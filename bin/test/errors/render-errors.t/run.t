@@ -29,13 +29,13 @@ Invalid variable name:
   $ mustache reference.json missing-variable.mustache
   Template render error:
   File "missing-variable.mustache", line 14, characters 40-46:
-  the variable 'na' is missing.
+  the variable 'na' is missing (inside section 'name').
   [2]
 
   $ mustache missing-variable.json reference.mustache
   Template render error:
   File "reference.mustache", line 5, characters 4-12:
-  the variable 'data' is missing.
+  the variable 'data' is missing (inside section 'list').
   [2]
 
 Invalid section name:
@@ -57,7 +57,7 @@ Error in a dotted path foo.bar (one case for the first component, the other in t
   $ mustache reference.json invalid-dotted-name-1.mustache
   Template render error:
   File "invalid-dotted-name-1.mustache", line 10, characters 2-15:
-  the variable 'gro' is missing.
+  the variable 'gro' is missing (inside section 'group').
   [2]
 
   $ mustache invalid-dotted-name-1.json reference.mustache
@@ -69,13 +69,13 @@ Error in a dotted path foo.bar (one case for the first component, the other in t
   $ mustache reference.json invalid-dotted-name-2.mustache
   Template render error:
   File "invalid-dotted-name-2.mustache", line 10, characters 2-15:
-  the variable 'group.fir' is missing.
+  the variable 'group.fir' is missing (inside section 'group').
   [2]
 
   $ mustache invalid-dotted-name-2.json reference.mustache
   Template render error:
   File "reference.mustache", line 10, characters 2-17:
-  the variable 'group.first' is missing.
+  the variable 'group.first' is missing (inside section 'group').
   [2]
 
 Non-scalar used as a scalar:
@@ -100,5 +100,5 @@ in better `ls` output).
   $ mustache reference.json z-missing-partial.mustache
   Template render error:
   File "z-missing-partial.mustache", line 11, characters 2-13:
-  the partial 'second' is missing.
+  the partial 'second' is missing (inside section 'group').
   [2]

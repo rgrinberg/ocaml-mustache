@@ -58,6 +58,72 @@ let escape_html s =
   ) s ;
   Buffer.contents b
 
+module Contexts : sig
+  type t
+  val start : Json.value -> t
+  val top : t -> Json.value
+  val open_section : t -> section:dotted_name -> Json.value -> t
+  val find_name : t -> string -> Json.value option
+
+  val explain : t -> string option
+end = struct
+  (* a nonempty stack of contexts, most recent first *)
+  type t = {
+    top: Json.value;
+    rest: Json.value list;
+    sections: dotted_name list;
+    (** from the most recent open to the oldest section opened *)
+  }
+
+  let start top = {
+    top;
+    rest = [];
+    sections = [];
+  }
+
+  let top ctxs = ctxs.top
+
+  let open_section { top; rest;  sections } ~section ctx =
+    {
+      top = ctx;
+      rest = top::rest;
+      sections = section::sections;
+    }
+
+  let rec find_name ctx name =
+    match ctx.top with
+    | `Null
+    | `Bool _
+    | `Float _
+    | `String _
+    | `A _
+      -> find_in_rest ctx name
+    | `O dict ->
+      match List.assoc name dict with
+      | exception Not_found -> find_in_rest ctx name
+      | v -> Some v
+
+  and find_in_rest ctx name =
+    match ctx.rest with
+    | [] -> None
+    | top :: rest -> find_name { ctx with top; rest; } name
+
+  (* from first opened section to most recently opened *)
+  let opened_sections ctxs =
+    List.rev ctxs.sections
+
+  let explain ctxs =
+    let sections = opened_sections ctxs in
+    if sections = [] then None
+    else Some(begin
+      let pp_sep ppf () = Format.fprintf ppf ",@ " in
+      Format.asprintf "inside section%s %a"
+        (if List.length sections = 1 then "" else "s")
+        (Format.pp_print_list ~pp_sep (fun ppf -> Format.fprintf ppf "'%a'" pp_dotted_name))
+        sections
+    end)
+end
+
 (* Utility functions that allow converting between the ast with locations and
    without locations. *)
 
@@ -231,11 +297,15 @@ type render_error_kind =
   | Missing_section of { name: dotted_name; }
   | Missing_partial of { name: name; }
 
-type render_error = { loc: loc; kind : render_error_kind }
+type render_error = {
+  loc: loc;
+  ctxs: Contexts.t;
+  kind : render_error_kind;
+}
 
 exception Render_error of render_error
 
-let pp_render_error ppf ({ loc; kind; } : render_error) =
+let pp_render_error ppf ({ loc; ctxs; kind; } : render_error) =
   let p ppf = Format.fprintf ppf in
   p ppf "@[%a:@ " pp_loc loc;
   begin match kind with
@@ -252,6 +322,11 @@ let pp_render_error ppf ({ loc; kind; } : render_error) =
   | Missing_partial { name } ->
     p ppf "the partial '%s' is missing"
       name
+  end;
+  begin match Contexts.explain ctxs with
+  | None -> ()
+  | Some explanation ->
+    p ppf "@ @[(%a)@]" Format.pp_print_text explanation
   end;
   p ppf ".@]"
 
@@ -272,61 +347,28 @@ let () =
     | _ -> None
   )
 
-(* Utility modules, that help looking up values in the json data during the
+(* Utility module, that help looking up values in the json data during the
    rendering phase. *)
 
-module Contexts : sig
-  type t
-  val start : Json.value -> t
-  val top : t -> Json.value
-  val add : t -> Json.value -> t
-  val find_name : t -> string -> Json.value option
-end = struct
-  (* a nonempty stack of contexts, most recent first *)
-  type t = Json.value * Json.value list
-
-  let start js = (js, [])
-
-  let top (js, _rest) = js
-
-  let add (top, rest) ctx = (ctx, top::rest)
-
-  let rec find_name ((top, rest) : t) name =
-    match top with
-    | `Null
-    | `Bool _
-    | `Float _
-    | `String _
-    | `A _
-      -> find_in_rest rest name
-    | `O dict ->
-      match List.assoc name dict with
-      | exception Not_found -> find_in_rest rest name
-      | v -> Some v
-
-  and find_in_rest rest name =
-    match rest with
-    | [] -> None
-    | top :: rest -> find_name (top, rest) name
-end
-
-let raise_err loc kind =
-  raise (Render_error { loc; kind })
+let raise_err loc ctxs kind =
+  raise (Render_error { loc; ctxs; kind })
 
 module Lookup = struct
-  let scalar ?(strict=true) ~loc ~name = function
+  let scalar ?(strict=true) ctxs ~loc ~name = function
     | `Null -> if strict then "null" else ""
     | `Bool true -> "true"
     | `Bool false -> "false"
     | `Float f -> Printf.sprintf "%.12g" f
     | `String s -> s
     | `A _ | `O _ ->
-      raise_err loc (Invalid_param { name; expected_form = "scalar" })
+      raise_err loc ctxs
+        (Invalid_param { name; expected_form = "scalar" })
 
   let simple_name ?(strict=true) ctxs ~loc n =
     match Contexts.find_name ctxs n with
     | None ->
-      if strict then raise_err loc (Missing_variable { name = [n] });
+      if strict then
+        raise_err loc ctxs (Missing_variable { name = [n] });
       None
     | Some _ as result -> result
 
@@ -338,11 +380,14 @@ module Lookup = struct
         match js with
         | `Null | `Float _ | `Bool _
         | `String _ | `A _ ->
-          raise_err loc (Invalid_param { name = List.rev acc; expected_form = "object" })
+          raise_err loc ctxs
+            (Invalid_param { name = List.rev acc; expected_form = "object" })
         | `O dict ->
           match List.assoc n dict with
           | exception Not_found ->
-            if strict then raise_err loc (Missing_variable { name = List.rev (n :: acc) });
+            if strict then
+              raise_err loc ctxs
+                (Missing_variable { name = List.rev (n :: acc) });
             None
           | js -> lookup (n :: acc) js ns
     in
@@ -356,12 +401,14 @@ module Lookup = struct
   let str ?(strict=true) ctxs ~loc ~key =
     match dotted_name ~strict ctxs ~loc ~key with
     | None -> ""
-    | Some js -> scalar ~strict ~loc ~name:key js
+    | Some js -> scalar ~strict ctxs ~loc ~name:key js
 
   let section ?(strict=true) ctxs ~loc ~key =
     match dotted_name ~strict:false ctxs ~loc ~key with
     | None ->
-      if strict then raise_err loc (Missing_section { name = key });
+      if strict then
+        raise_err loc ctxs
+          (Missing_section { name = key });
       `Bool false
     | Some js ->
       match js with
@@ -445,7 +492,8 @@ module Render = struct
         then render indent s.contents ctxs
 
       | Section s ->
-        let enter ctx = render indent s.contents (Contexts.add ctxs ctx) in
+        let enter ctx =
+          render indent s.contents (Contexts.open_section ctxs ~section:s.name ctx) in
         begin match Lookup.section ~strict ctxs ~loc ~key:s.name with
         | `Bool false -> ()
         | `A elems    -> List.iter enter elems
@@ -457,7 +505,7 @@ module Render = struct
         | Some p, _ -> render (indent + partial_indent) p ctxs
         | None, false -> ()
         | None, true ->
-          raise_err loc (Missing_partial { name })
+          raise_err loc ctxs (Missing_partial { name })
         end
 
       | Comment _c -> ()

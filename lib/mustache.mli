@@ -40,6 +40,14 @@ type loc =
     { loc_start: Lexing.position;
       loc_end: Lexing.position }
 
+(** Mustache "contexts" are the environment in which
+    names are looked up, determined by which sections
+    have been opened at this point in the template. *)
+module Contexts : sig
+  type t
+  val explain : t -> string option
+end
+
 (** Read template files; those function may raise [Template_parse_error]. *)
 type template_parse_error
 exception Template_parse_error of template_parse_error
@@ -80,7 +88,7 @@ type render_error_kind =
   | Missing_section of { name: dotted_name; }
   | Missing_partial of { name: name; }
 
-type render_error = { loc: loc; kind : render_error_kind }
+type render_error = { loc: loc; ctxs: Contexts.t; kind : render_error_kind }
 
 exception Render_error of render_error
 
