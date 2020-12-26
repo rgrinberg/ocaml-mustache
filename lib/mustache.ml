@@ -227,13 +227,16 @@ let () =
   )
 
 
-type render_error =
-  | Invalid_param of string
-  | Missing_variable of string
-  | Missing_section of string
-  | Missing_partial of string
+type render_error_kind =
+  | Invalid_param of { name: dotted_name; expected_form: string; }
+  | Missing_variable of { name: dotted_name; }
+  | Missing_section of { name: dotted_name; }
+  | Missing_partial of { name: name; }
+
+type render_error = { loc: loc; kind : render_error_kind }
 
 exception Render_error of render_error
+
 
 (* Utility modules, that help looking up values in the json data during the
    rendering phase. *)
@@ -273,56 +276,58 @@ end = struct
     | top :: rest -> find_name (top, rest) name
 end
 
+let raise_err loc kind =
+  raise (Render_error { loc; kind })
+
 module Lookup = struct
-  let scalar ?(strict=true) = function
+  let scalar ?(strict=true) ~loc ~name = function
     | `Null -> if strict then "null" else ""
     | `Bool true -> "true"
     | `Bool false -> "false"
     | `Float f -> Printf.sprintf "%.12g" f
     | `String s -> s
     | `A _ | `O _ ->
-      raise (Render_error (Invalid_param "Lookup.scalar: not a scalar"))
+      raise_err loc (Invalid_param { name; expected_form = "scalar" })
 
-  let simple_name ?(strict=true) ctxs n =
+  let simple_name ?(strict=true) ctxs ~loc n =
     match Contexts.find_name ctxs n with
     | None ->
-      if strict then raise (Render_error (Missing_variable n));
+      if strict then raise_err loc (Missing_variable { name = [n] });
       None
     | Some _ as result -> result
 
-  let dotted_name ?(strict=true) ctxs ~key =
-    let rec lookup (js : Json.value) ~key =
+  let dotted_name ?(strict=true) ctxs ~loc ~key =
+    let rec lookup acc (js : Json.value) ~key =
       match key with
       | [] -> Some js
       | n :: ns ->
         match js with
         | `Null | `Float _ | `Bool _
         | `String _ | `A _ ->
-          raise (Render_error (Invalid_param ("str. not an object")))
+          raise_err loc (Invalid_param { name = List.rev acc; expected_form = "object" })
         | `O dict ->
           match List.assoc n dict with
           | exception Not_found ->
-            if strict then raise (Render_error (Missing_variable n));
+            if strict then raise_err loc (Missing_variable { name = List.rev (n :: acc) });
             None
-          | js -> lookup js ns
+          | js -> lookup (n :: acc) js ns
     in
     match key with
     | [] -> Some (Contexts.top ctxs)
     | n :: ns ->
-      match simple_name ~strict ctxs n with
+      match simple_name ~strict ctxs ~loc n with
       | None -> None
-      | Some js -> lookup js ns
+      | Some js -> lookup [n] js ns
 
-  let str ?(strict=true) ctxs ~key =
-    match dotted_name ~strict ctxs ~key with
+  let str ?(strict=true) ctxs ~loc ~key =
+    match dotted_name ~strict ctxs ~loc ~key with
     | None -> ""
-    | Some js -> scalar ~strict js
+    | Some js -> scalar ~strict ~loc ~name:key js
 
-  let section ?(strict=true) ctxs ~key =
-    let key_s = string_of_dotted_name key in
-    match dotted_name ~strict:false ctxs ~key with
+  let section ?(strict=true) ctxs ~loc ~key =
+    match dotted_name ~strict:false ctxs ~loc ~key with
     | None ->
-      if strict then raise (Render_error (Missing_section key_s));
+      if strict then raise_err loc (Missing_section { name = key });
       `Bool false
     | Some js ->
       match js with
@@ -331,8 +336,8 @@ module Lookup = struct
       | (`A _ | `O _) as js -> js
       | _ -> js
 
-  let inverted ctxs ~key =
-    match dotted_name ~strict:false ctxs ~key with
+  let inverted ctxs ~loc ~key =
+    match dotted_name ~strict:false ctxs ~loc ~key with
     | None -> true
     | Some (`A [] | `Bool false | `Null) -> true
     | _ -> false
@@ -386,26 +391,28 @@ module Render = struct
       ) (List.tl lines)
     in
 
-    let rec render indent m (ctxs : Contexts.t) = match m.desc with
+    let rec render indent m (ctxs : Contexts.t) =
+      let loc = m.loc in
+      match m.desc with
 
       | String s ->
         print_indented_string indent s
 
       | Escaped name ->
         align indent;
-        Buffer.add_string buf (escape_html (Lookup.str ~strict ~key:name ctxs))
+        Buffer.add_string buf (escape_html (Lookup.str ~strict ~loc ~key:name ctxs))
 
       | Unescaped name ->
         align indent;
-        Buffer.add_string buf (Lookup.str ~strict ~key:name ctxs)
+        Buffer.add_string buf (Lookup.str ~strict ~loc ~key:name ctxs)
 
       | Inverted_section s ->
-        if Lookup.inverted ctxs s.name
+        if Lookup.inverted ctxs ~loc ~key:s.name
         then render indent s.contents ctxs
 
       | Section s ->
         let enter ctx = render indent s.contents (Contexts.add ctxs ctx) in
-        begin match Lookup.section ~strict ctxs ~key:s.name with
+        begin match Lookup.section ~strict ctxs ~loc ~key:s.name with
         | `Bool false -> ()
         | `A elems    -> List.iter enter elems
         | elem        -> enter elem
@@ -415,7 +422,8 @@ module Render = struct
         begin match (Lazy.force contents, strict) with
         | Some p, _ -> render (indent + partial_indent) p ctxs
         | None, false -> ()
-        | None, true -> raise (Render_error (Missing_partial name))
+        | None, true ->
+          raise_err loc (Missing_partial { name })
         end
 
       | Comment _c -> ()

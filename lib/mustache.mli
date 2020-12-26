@@ -74,11 +74,13 @@ val to_string : t -> string
 
 
 (** Render templates; those functions may raise [Render_error]. *)
-type render_error =
-  | Invalid_param of string
-  | Missing_variable of string
-  | Missing_section of string
-  | Missing_partial of string
+type render_error_kind =
+  | Invalid_param of { name: dotted_name; expected_form: string; }
+  | Missing_variable of { name: dotted_name; }
+  | Missing_section of { name: dotted_name; }
+  | Missing_partial of { name: name; }
+
+type render_error = { loc: loc; kind : render_error_kind }
 
 exception Render_error of render_error
 
