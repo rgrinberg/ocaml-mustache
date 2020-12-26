@@ -36,6 +36,10 @@ and partial =
     name: name;
     contents: t option Lazy.t }
 
+type loc =
+    { loc_start: Lexing.position;
+      loc_end: Lexing.position }
+
 (** Read template files; those function may raise [Template_parse_error]. *)
 type template_parse_error
 exception Template_parse_error of template_parse_error
@@ -172,9 +176,9 @@ val concat : t list -> t
 (** Variant of the [t] mustache datatype which includes source-file locations,
     and associated functions. *)
 module With_locations : sig
-  type loc =
-    { loc_start: Lexing.position;
-      loc_end: Lexing.position }
+  (* this type has been moved out,
+     keep an alias for backward-compatibility *)
+  type nonrec loc = loc = { loc_start: Lexing.position; loc_end: Lexing.position }
 
   type desc =
     | String of string

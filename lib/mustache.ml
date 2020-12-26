@@ -62,8 +62,8 @@ let escape_html s =
    without locations. *)
 
 let dummy_loc =
-  { Locs.loc_start = Lexing.dummy_pos;
-    Locs.loc_end = Lexing.dummy_pos }
+  { loc_start = Lexing.dummy_pos;
+    loc_end = Lexing.dummy_pos }
 
 let rec erase_locs { Locs.desc; _ } =
   erase_locs_desc desc
@@ -143,38 +143,46 @@ let to_string x =
 
 (* Parsing: produces an ast with locations. *)
 type template_parse_error = {
-  lexbuf: Lexing.lexbuf;
+  loc: loc;
   kind: template_parse_error_kind;
 }
 and template_parse_error_kind =
   | Lexing of string
   | Parsing
-  | Invalid_template of string
+  | Mismatched_section of {
+      start_name: dotted_name;
+      end_name: dotted_name;
+    }
 
 exception Template_parse_error of template_parse_error
 
 let parse_lx (lexbuf: Lexing.lexbuf) : Locs.t =
+  let raise_err lexbuf kind =
+    let loc =
+      let open Lexing in
+      { loc_start = lexbuf.lex_start_p; loc_end = lexbuf.lex_curr_p } in
+    raise (Template_parse_error { loc; kind })
+  in
   try
     MenhirLib.Convert.Simplified.traditional2revised
       Mustache_parser.mustache
       Mustache_lexer.(handle_standalone mustache lexbuf)
   with
   | Mustache_lexer.Error msg ->
-    raise (Template_parse_error { lexbuf; kind = Lexing msg })
+    raise_err lexbuf (Lexing msg)
   | Mustache_parser.Error ->
-    raise (Template_parse_error { lexbuf; kind = Parsing })
-  | Invalid_template msg ->
-    raise (Template_parse_error { lexbuf; kind = Invalid_template msg })
-
+    raise_err lexbuf Parsing
+  | Mismatched_section { start_name; end_name } ->
+    raise_err lexbuf (Mismatched_section { start_name; end_name })
 
 let of_string s = parse_lx (Lexing.from_string s)
 
-let pp_template_parse_error ppf { lexbuf; kind } =
+let pp_template_parse_error ppf { loc; kind } =
   let open Lexing in
-  let fname = lexbuf.lex_start_p.pos_fname in
+  let fname = loc.loc_start.pos_fname in
   let extract pos = (pos.pos_lnum, pos.pos_cnum - pos.pos_bol) in
-  let (start_line, start_col) = extract lexbuf.lex_start_p in
-  let (end_line, end_col) = extract lexbuf.lex_curr_p in
+  let (start_line, start_col) = extract loc.loc_start in
+  let (end_line, end_col) = extract loc.loc_end in
   let p ppf = Format.fprintf ppf in
   let pp_range ppf (start, end_) =
     if start = end_ then
@@ -193,9 +201,14 @@ let pp_template_parse_error ppf { lexbuf; kind } =
     pp_range (start_col, end_col)
     ;
   begin match kind with
-  | Parsing -> p ppf "syntax error"
-  | Lexing msg -> p ppf "%s" msg
-  | Invalid_template msg -> p ppf "%s" msg
+  | Lexing msg ->
+    p ppf "%s" msg
+  | Parsing ->
+    p ppf "syntax error"
+  | Mismatched_section { start_name; end_name } ->
+    p ppf "Mismatched section %a with %a"
+      pp_dotted_name start_name
+      pp_dotted_name end_name
   end;
   p ppf ".@]"
 
@@ -488,6 +501,9 @@ end
 
 module With_locations = struct
   include Locs
+
+  (* re-exported here for backward-compatibility *)
+  type nonrec loc = loc = { loc_start: Lexing.position; loc_end: Lexing.position }
 
   let dummy_loc = dummy_loc
   let parse_lx = parse_lx
