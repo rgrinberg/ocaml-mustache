@@ -200,7 +200,7 @@ let pp_loc ppf loc =
     pp_range (start_line, end_line)
     pp_range (start_col, end_col)
 
-let pp_template_parse_error ppf { loc; kind } =
+let pp_template_parse_error ppf ({ loc; kind; } : template_parse_error) =
   let p ppf = Format.fprintf ppf in
   p ppf "@[%a:@ " pp_loc loc;
   begin match kind with
@@ -209,23 +209,11 @@ let pp_template_parse_error ppf { loc; kind } =
   | Parsing ->
     p ppf "syntax error"
   | Mismatched_section { start_name; end_name } ->
-    p ppf "Mismatched section %a with %a"
+    p ppf "Mismatched section '%a' with '%a'"
       pp_dotted_name start_name
       pp_dotted_name end_name
   end;
   p ppf ".@]"
-
-let () =
-  Printexc.register_printer (function
-    | Template_parse_error err ->
-      let buf = Buffer.create 42 in
-      Format.fprintf (Format.formatter_of_buffer buf)
-        "Mustache.Template_parse_error (%a)@."
-        pp_template_parse_error err;
-      Some (Buffer.contents buf)
-    | _ -> None
-  )
-
 
 type render_error_kind =
   | Invalid_param of { name: dotted_name; expected_form: string; }
@@ -237,6 +225,42 @@ type render_error = { loc: loc; kind : render_error_kind }
 
 exception Render_error of render_error
 
+let pp_render_error ppf ({ loc; kind; } : render_error) =
+  let p ppf = Format.fprintf ppf in
+  p ppf "@[%a:@ " pp_loc loc;
+  begin match kind with
+  | Invalid_param { name; expected_form; } ->
+    p ppf "the value of '%a' is not a valid %s"
+      pp_dotted_name name
+      expected_form
+  | Missing_variable { name; } ->
+    p ppf "the variable '%a' is missing"
+      pp_dotted_name name
+  | Missing_section { name; } ->
+    p ppf "the section '%a' is missing"
+      pp_dotted_name name
+  | Missing_partial { name } ->
+    p ppf "the partial '%s' is missing"
+      name
+  end;
+  p ppf ".@]"
+
+
+let () =
+  let pretty_print exn_name pp_error err =
+    let buf = Buffer.create 42 in
+    Format.fprintf (Format.formatter_of_buffer buf)
+      "Mustache.%s:@\n%a@?"
+      exn_name
+      pp_error err;
+    Buffer.contents buf in
+  Printexc.register_printer (function
+    | Template_parse_error err ->
+      Some (pretty_print "Template_parse_error" pp_template_parse_error err)
+    | Render_error err ->
+      Some (pretty_print "Render_error" pp_render_error err)
+    | _ -> None
+  )
 
 (* Utility modules, that help looking up values in the json data during the
    rendering phase. *)

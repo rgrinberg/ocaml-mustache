@@ -84,6 +84,8 @@ type render_error = { loc: loc; kind : render_error_kind }
 
 exception Render_error of render_error
 
+val pp_render_error : Format.formatter -> render_error -> unit
+
 (** [render_fmt fmt template json] renders [template], filling it
     with data from [json], printing it to formatter [fmt].
 

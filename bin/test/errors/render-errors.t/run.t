@@ -27,49 +27,59 @@ one possible source of error, or both, or none.
 Invalid variable name:
 
   $ mustache reference.json missing-variable.mustache
-  Fatal error: exception Mustache.Render_error(_)
+  Fatal error: exception Mustache.Render_error:
+  Line 0, character -1: the variable 'na' is missing.
   [2]
 
   $ mustache missing-variable.json reference.mustache
-  Fatal error: exception Mustache.Render_error(_)
+  Fatal error: exception Mustache.Render_error:
+  Line 0, character -1: the variable 'data' is missing.
   [2]
 
 Invalid section name:
 
   $ mustache reference.json missing-section.mustache
-  Fatal error: exception Mustache.Render_error(_)
+  Fatal error: exception Mustache.Render_error:
+  Line 0, character -1: the section 'na' is missing.
   [2]
 
   $ mustache missing-section.json reference.mustache
-  Fatal error: exception Mustache.Render_error(_)
+  Fatal error: exception Mustache.Render_error:
+  Line 0, character -1: the section 'group' is missing.
   [2]
 
 Error in a dotted path foo.bar (one case for the first component, the other in the second).
 
   $ mustache reference.json invalid-dotted-name-1.mustache
-  Fatal error: exception Mustache.Render_error(_)
+  Fatal error: exception Mustache.Render_error:
+  Line 0, character -1: the variable 'gro' is missing.
   [2]
 
   $ mustache invalid-dotted-name-1.json reference.mustache
-  Fatal error: exception Mustache.Render_error(_)
+  Fatal error: exception Mustache.Render_error:
+  Line 0, character -1: the section 'group' is missing.
   [2]
 
   $ mustache reference.json invalid-dotted-name-2.mustache
-  Fatal error: exception Mustache.Render_error(_)
+  Fatal error: exception Mustache.Render_error:
+  Line 0, character -1: the variable 'group.fir' is missing.
   [2]
 
   $ mustache invalid-dotted-name-2.json reference.mustache
-  Fatal error: exception Mustache.Render_error(_)
+  Fatal error: exception Mustache.Render_error:
+  Line 0, character -1: the variable 'group.first' is missing.
   [2]
 
 Non-scalar used as a scalar:
 
   $ mustache reference.json non-scalar.mustache
-  Fatal error: exception Mustache.Render_error(_)
+  Fatal error: exception Mustache.Render_error:
+  Line 0, character -1: the value of 'list' is not a valid scalar.
   [2]
 
   $ mustache non-scalar.json reference.mustache
-  Fatal error: exception Mustache.Render_error(_)
+  Fatal error: exception Mustache.Render_error:
+  Line 0, character -1: the value of 'title' is not a valid scalar.
   [2]
 
 Missing partial (currently the CLI does not support any partial anyway):
@@ -78,5 +88,6 @@ Missing partial (currently the CLI does not support any partial anyway):
 in better `ls` output).
 
   $ mustache reference.json z-missing-partial.mustache
-  Fatal error: exception Mustache.Render_error(_)
+  Fatal error: exception Mustache.Render_error:
+  Line 0, character -1: the partial 'second' is missing.
   [2]

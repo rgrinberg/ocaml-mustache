@@ -1,6 +1,9 @@
 ### 3.2.0
 
-* Improve parsing errors by adding locations (@gasche, #47)
+* Improve error messages (@gasche, #47 and #51)
+  Note: the exceptions raised by Mustache have changed, this breaks
+  compatibility for users that would catch and deconstruct existing
+  exceptions.
 * Add `render_buf` to render templates directly to buffers (@gasche, #48)
 * When a lookup fails in the current context, lookup in parents contexts.
   This should fix errors when using "{{#foo}}" for a scalar variable

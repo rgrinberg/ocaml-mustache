@@ -82,7 +82,7 @@ Mismatch between section-start and section-end:
   $ PROBLEM=foo-bar.mustache
   $ echo "{{#foo}} {{.}} {{/bar}}" > $PROBLEM
   $ mustache foo.json $PROBLEM
-  Lines 1-2, characters 23-0: Mismatched section foo with bar.
+  Lines 1-2, characters 23-0: Mismatched section 'foo' with 'bar'.
   [3]
 
   $ PROBLEM=foo-not-closed.mustache
@@ -94,5 +94,5 @@ Mismatch between section-start and section-end:
   $ PROBLEM=wrong-nesting.mustache
   $ echo "{{#bar}} {{#foo}} {{.}} {{/bar}} {{/foo}}" > $PROBLEM
   $ mustache foo.json $PROBLEM
-  Lines 1-2, characters 41-0: Mismatched section foo with bar.
+  Lines 1-2, characters 41-0: Mismatched section 'foo' with 'bar'.
   [3]
