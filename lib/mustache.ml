@@ -26,7 +26,7 @@ include Mustache_types
 module List = ListLabels
 module String = StringLabels
 
-module Json = struct
+module Env = struct
   type value =
     [ `Null
     | `Bool of bool
@@ -206,13 +206,13 @@ let () =
 
 module Contexts : sig
   type t
-  val start : Json.value -> t
-  val top : t -> Json.value
-  val add : t -> Json.value -> t
-  val find_name : t -> string -> Json.value option
+  val start : Env.value -> t
+  val top : t -> Env.value
+  val add : t -> Env.value -> t
+  val find_name : t -> string -> Env.value option
 end = struct
   (* a nonempty stack of contexts, most recent first *)
-  type t = Json.value * Json.value list
+  type t = Env.value * Env.value list
 
   let start js = (js, [])
 
@@ -255,7 +255,7 @@ module Lookup = struct
     | Some _ as result -> result
 
   let dotted_name ?(strict=true) ctxs ~key =
-    let rec lookup (js : Json.value) ~key =
+    let rec lookup (js : Env.value) ~key =
       match key with
       | [] -> Some js
       | n :: ns ->
@@ -364,7 +364,7 @@ module Without_locations = struct
   let render_buf
         ?(strict = true)
         ?(partials = fun _ -> None)
-        (buf : Buffer.t) (m : No_locs.t) (js : Json.t)
+        (buf : Buffer.t) (m : No_locs.t) (js : Env.t)
     =
     let print_indent indent =
       for _ = 0 to indent - 1 do
@@ -431,9 +431,9 @@ module Without_locations = struct
       | Concat templates ->
         List.iter (fun x -> render' indent x ctxs) templates
 
-    in render' 0 (expand_partials partials m) (Contexts.start (Json.value js))
+    in render' 0 (expand_partials partials m) (Contexts.start (Env.value js))
 
-  let render ?strict ?partials (m : t) (js : Json.t) =
+  let render ?strict ?partials (m : t) (js : Env.t) =
     let buf = Buffer.create 0 in
     render_buf ?strict ?partials buf m js ;
     Buffer.contents buf
