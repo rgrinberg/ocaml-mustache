@@ -177,7 +177,7 @@ let parse_lx (lexbuf: Lexing.lexbuf) : Locs.t =
 
 let of_string s = parse_lx (Lexing.from_string s)
 
-let pp_template_parse_error ppf { loc; kind } =
+let pp_loc ppf loc =
   let open Lexing in
   let fname = loc.loc_start.pos_fname in
   let extract pos = (pos.pos_lnum, pos.pos_cnum - pos.pos_bol) in
@@ -196,10 +196,13 @@ let pp_template_parse_error ppf { loc; kind } =
   else
     p ppf "L"
   end;
-  p ppf "ine%a,@ character%a:@ "
+  p ppf "ine%a,@ character%a"
     pp_range (start_line, end_line)
     pp_range (start_col, end_col)
-    ;
+
+let pp_template_parse_error ppf { loc; kind } =
+  let p ppf = Format.fprintf ppf in
+  p ppf "@[%a:@ " pp_loc loc;
   begin match kind with
   | Lexing msg ->
     p ppf "%s" msg
