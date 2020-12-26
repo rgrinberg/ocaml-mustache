@@ -299,6 +299,93 @@ module Lookup = struct
 
 end
 
+module Render = struct
+  (* Rendering is defined on the ast without locations. *)
+
+  open Locs
+
+  (* Render a template whose partials have already been expanded.
+
+     Note: the reason we expand partials once before rendering,
+     instead of expanding on the fly during rendering, is to avoid
+     expanding many times the partials that are inside a list. However,
+     this as the consequence that some partials that may not be used
+     in a given rendering may be expanded, and that partial expansion
+     cannot have access to the specific context of each partial usage
+     -- some other Mustache APIs pass this context information to the
+     partial-resolution function. *)
+  let render_expanded
+        ?(strict = true)
+        (buf : Buffer.t) (m : Locs.t) (js : Json.t)
+    =
+    let print_indent indent =
+      for _ = 0 to indent - 1 do
+        Buffer.add_char buf ' '
+      done
+    in
+
+    let beginning_of_line = ref true in
+
+    let align indent =
+      if !beginning_of_line then (
+        print_indent indent;
+        beginning_of_line := false
+      )
+    in
+
+    let print_indented_string indent s =
+      let lines = Mustache_lexer.split_on_char '\n' s in
+      align indent; Buffer.add_string buf (List.hd lines);
+      List.iter (fun line ->
+        Buffer.add_char buf '\n';
+        beginning_of_line := true;
+        if line <> "" then (
+          align indent;
+          Buffer.add_string buf line;
+        )
+      ) (List.tl lines)
+    in
+
+    let rec render indent m (ctxs : Contexts.t) = match m.desc with
+
+      | String s ->
+        print_indented_string indent s
+
+      | Escaped name ->
+        align indent;
+        Buffer.add_string buf (escape_html (Lookup.str ~strict ~key:name ctxs))
+
+      | Unescaped name ->
+        align indent;
+        Buffer.add_string buf (Lookup.str ~strict ~key:name ctxs)
+
+      | Inverted_section s ->
+        if Lookup.inverted ctxs s.name
+        then render indent s.contents ctxs
+
+      | Section s ->
+        let enter ctx = render indent s.contents (Contexts.add ctxs ctx) in
+        begin match Lookup.section ~strict ctxs ~key:s.name with
+        | `Bool false -> ()
+        | `A elems    -> List.iter enter elems
+        | elem        -> enter elem
+        end
+
+      | Partial { indent = partial_indent; name; contents } ->
+        begin match (Lazy.force contents, strict) with
+        | Some p, _ -> render (indent + partial_indent) p ctxs
+        | None, false -> ()
+        | None, true -> raise (Missing_partial name)
+        end
+
+      | Comment _c -> ()
+
+      | Concat templates ->
+        List.iter (fun x -> render indent x ctxs) templates
+
+    in render 0 m (Contexts.start (Json.value js))
+end
+
 (* Packing up everything in two modules of similar signature:
    [Without_locations] and [With_locations]. In the toplevel signature, only
    [With_locations] appears, and [Without_locations] contents are directly
@@ -359,79 +446,10 @@ module Without_locations = struct
     in
     fold ~string:raw ~section ~escaped ~unescaped ~partial ~comment ~concat
 
-  (* Rendering: defined on the ast without locations. *)
 
-  let render_buf
-        ?(strict = true)
-        ?(partials = fun _ -> None)
-        (buf : Buffer.t) (m : No_locs.t) (js : Json.t)
-    =
-    let print_indent indent =
-      for _ = 0 to indent - 1 do
-        Buffer.add_char buf ' '
-      done
-    in
-
-    let beginning_of_line = ref true in
-
-    let align indent =
-      if !beginning_of_line then (
-        print_indent indent;
-        beginning_of_line := false
-      )
-    in
-
-    let print_indented_string indent s =
-      let lines = Mustache_lexer.split_on_char '\n' s in
-      align indent; Buffer.add_string buf (List.hd lines);
-      List.iter (fun line ->
-        Buffer.add_char buf '\n';
-        beginning_of_line := true;
-        if line <> "" then (
-          align indent;
-          Buffer.add_string buf line;
-        )
-      ) (List.tl lines)
-    in
-
-    let rec render' indent m (ctxs : Contexts.t) = match m with
-
-      | String s ->
-        print_indented_string indent s
-
-      | Escaped name ->
-        align indent;
-        Buffer.add_string buf (escape_html (Lookup.str ~strict ~key:name ctxs))
-
-      | Unescaped name ->
-        align indent;
-        Buffer.add_string buf (Lookup.str ~strict ~key:name ctxs)
-
-      | Inverted_section s ->
-        if Lookup.inverted ctxs s.name
-        then render' indent s.contents ctxs
-
-      | Section s ->
-        let enter ctx = render' indent s.contents (Contexts.add ctxs ctx) in
-        begin match Lookup.section ~strict ctxs ~key:s.name with
-        | `Bool false -> ()
-        | `A elems    -> List.iter enter elems
-        | elem        -> enter elem
-        end
-
-      | Partial { indent = partial_indent; name; contents } ->
-        begin match (Lazy.force contents, strict) with
-        | Some p, _ -> render' (indent + partial_indent) p ctxs
-        | None, false -> ()
-        | None, true -> raise (Missing_partial name)
-        end
-
-      | Comment _c -> ()
-
-      | Concat templates ->
-        List.iter (fun x -> render' indent x ctxs) templates
-
-    in render' 0 (expand_partials partials m) (Contexts.start (Json.value js))
+  let render_buf ?strict ?(partials = fun _ -> None) buf (m : t) (js : Json.t) =
+    let m = add_dummy_locs (expand_partials partials m) in
+    Render.render_expanded buf ?strict m js
 
   let render ?strict ?partials (m : t) (js : Json.t) =
     let buf = Buffer.create 0 in
@@ -455,27 +473,6 @@ module With_locations = struct
   let to_formatter = pp
 
   let to_string x = to_string (erase_locs x)
-
-  let partials_erase_locs partials =
-    option_map partials (fun f name -> option_map (f name) erase_locs)
-
-  let render_fmt ?strict ?partials fmt m js =
-    Without_locations.render_fmt
-      ?strict
-      ?partials:(partials_erase_locs partials)
-      fmt (erase_locs m) js
-
-  let render_buf ?strict ?partials fmt m js =
-    Without_locations.render_buf
-      ?strict
-      ?partials:(partials_erase_locs partials)
-      fmt (erase_locs m) js
-
-  let render ?strict ?partials m js =
-    Without_locations.render
-      ?strict
-      ?partials:(partials_erase_locs partials)
-      (erase_locs m) js
 
   let rec fold ~string ~section ~escaped ~unescaped ~partial ~comment ~concat t =
     let go = fold ~string ~section ~escaped ~unescaped ~partial ~comment ~concat in
@@ -526,6 +523,20 @@ module With_locations = struct
       partial ~loc ~indent name contents'
     in
     fold ~string:raw ~section ~escaped ~unescaped ~partial ~comment ~concat
+
+  let render_buf ?strict ?(partials = fun _ -> None) buf (m : t) (js : Json.t) =
+    let m = expand_partials partials m in
+    Render.render_expanded buf ?strict m js
+
+  let render ?strict ?partials (m : t) (js : Json.t) =
+    let buf = Buffer.create 0 in
+    render_buf ?strict ?partials buf m js ;
+    Buffer.contents buf
+
+  let render_fmt ?strict ?partials fmt m js =
+    let str = render ?strict ?partials m js in
+    Format.pp_print_string fmt str;
+    Format.pp_print_flush fmt ()
 end
 
 
