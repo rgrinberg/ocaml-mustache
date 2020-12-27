@@ -1,6 +1,7 @@
 (lang dune 2.7)
 (name mustache)
 (using menhir 2.0)
+(cram enable)
 
 (license MIT)
 (implicit_transitive_deps false)

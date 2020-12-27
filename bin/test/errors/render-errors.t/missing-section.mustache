@@ -1,0 +1,17 @@
+Title: {{title}}
+
+List:
+{{#list}}
+  - {{data}}
+{{/list}}
+
+Group:
+{{#group}}
+  {{group.first}}
+  {{second}}
+{{/group}}
+
+{{#na}}The variable "name" has value "{{name}}".{{/na}}
+{{^name}}The variable "name" is not set. {{/name}}
+
+Last line.
