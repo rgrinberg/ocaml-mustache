@@ -1,0 +1,13 @@
+{
+    "title": "Some Title",
+    "list": [
+        {"data": "foo"},
+        {"data": "bar"},
+        {"data": "baz"}
+    ],
+    "group": {
+        "fir": "First",
+        "second": "Second"
+    },
+    "name": "Some Name"
+}
