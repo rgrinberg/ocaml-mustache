@@ -20,7 +20,6 @@ let run json_filename template_filename =
   let j = load_file json_filename
   and t = load_file template_filename
   in
-  (* print_endline j; *)
   apply_mustache j t
 
 let usage () =
