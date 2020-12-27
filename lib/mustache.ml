@@ -219,7 +219,7 @@ let pp_template_parse_error ppf ({ loc; kind; } : template_parse_error) =
   | Parsing ->
     p ppf "syntax error"
   | Mismatched_section { start_name; end_name } ->
-    p ppf "Mismatched section '%a' with '%a'"
+    p ppf "Section mismatch: {{#%a}} is closed by {{/%a}}"
       pp_dotted_name start_name
       pp_dotted_name end_name
   end;
