@@ -180,25 +180,35 @@ let of_string s = parse_lx (Lexing.from_string s)
 let pp_loc ppf loc =
   let open Lexing in
   let fname = loc.loc_start.pos_fname in
+  let is_dummy_pos pos = pos.pos_lnum < 0 || pos.pos_cnum < 0 in
   let extract pos = (pos.pos_lnum, pos.pos_cnum - pos.pos_bol) in
-  let (start_line, start_col) = extract loc.loc_start in
-  let (end_line, end_col) = extract loc.loc_end in
+  let loc_start, loc_end =
+    let loc_start = loc.loc_start in
+    let loc_end = loc.loc_end in
+    let orelse p1 p2 = if not (is_dummy_pos p1) then p1 else p2 in
+    orelse loc_start loc_end, orelse loc_end loc_start in
   let p ppf = Format.fprintf ppf in
-  let pp_range ppf (start, end_) =
-    if start = end_ then
-      p ppf " %d" start
+  if is_dummy_pos loc_start && is_dummy_pos loc_end then
+    p ppf "(At unknown location)"
+  else begin
+    let (start_line, start_col) = extract loc.loc_start in
+    let (end_line, end_col) = extract loc.loc_end in
+    let pp_range ppf (start, end_) =
+      if start = end_ then
+        p ppf " %d" start
+      else
+        p ppf "s %d-%d" start end_
+    in
+    p ppf "@[";
+    begin if fname <> "" then
+      p ppf "File %S,@ l" fname
     else
-      p ppf "s %d-%d" start end_
-  in
-  p ppf "@[";
-  begin if fname <> "" then
-    p ppf "File %S,@ l" fname
-  else
-    p ppf "L"
-  end;
-  p ppf "ine%a,@ character%a"
-    pp_range (start_line, end_line)
-    pp_range (start_col, end_col)
+      p ppf "L"
+    end;
+    p ppf "ine%a,@ character%a"
+      pp_range (start_line, end_line)
+      pp_range (start_col, end_col)
+  end
 
 let pp_template_parse_error ppf ({ loc; kind; } : template_parse_error) =
   let p ppf = Format.fprintf ppf in
