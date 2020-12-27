@@ -62,8 +62,8 @@ let escape_html s =
    without locations. *)
 
 let dummy_loc =
-  { Locs.loc_start = Lexing.dummy_pos;
-    Locs.loc_end = Lexing.dummy_pos }
+  { loc_start = Lexing.dummy_pos;
+    loc_end = Lexing.dummy_pos }
 
 let rec erase_locs { Locs.desc; _ } =
   erase_locs_desc desc
@@ -143,61 +143,132 @@ let to_string x =
 
 (* Parsing: produces an ast with locations. *)
 type template_parse_error = {
-  lexbuf: Lexing.lexbuf;
-  kind: error_kind;
+  loc: loc;
+  kind: template_parse_error_kind;
 }
-and error_kind = Parsing | Lexing of string
+and template_parse_error_kind =
+  | Lexing of string
+  | Parsing
+  | Mismatched_section of {
+      start_name: dotted_name;
+      end_name: dotted_name;
+    }
 
-exception Parse_error of template_parse_error
+exception Template_parse_error of template_parse_error
 
 let parse_lx (lexbuf: Lexing.lexbuf) : Locs.t =
+  let raise_err lexbuf kind =
+    let loc =
+      let open Lexing in
+      { loc_start = lexbuf.lex_start_p; loc_end = lexbuf.lex_curr_p } in
+    raise (Template_parse_error { loc; kind })
+  in
   try
     MenhirLib.Convert.Simplified.traditional2revised
       Mustache_parser.mustache
       Mustache_lexer.(handle_standalone mustache lexbuf)
   with
   | Mustache_lexer.Error msg ->
-    raise (Parse_error { lexbuf; kind = Lexing msg })
+    raise_err lexbuf (Lexing msg)
   | Mustache_parser.Error ->
-    raise (Parse_error { lexbuf; kind = Parsing })
+    raise_err lexbuf Parsing
+  | Mismatched_section { start_name; end_name } ->
+    raise_err lexbuf (Mismatched_section { start_name; end_name })
 
 let of_string s = parse_lx (Lexing.from_string s)
 
-let pp_error ppf { lexbuf; kind } =
+let pp_loc ppf loc =
   let open Lexing in
-  let fname = lexbuf.lex_start_p.pos_fname in
+  let fname = loc.loc_start.pos_fname in
+  let is_dummy_pos pos = pos.pos_lnum < 0 || pos.pos_cnum < 0 in
   let extract pos = (pos.pos_lnum, pos.pos_cnum - pos.pos_bol) in
-  let (start_line, start_col) = extract lexbuf.lex_start_p in
-  let (end_line, end_col) = extract lexbuf.lex_curr_p in
+  let loc_start, loc_end =
+    let loc_start = loc.loc_start in
+    let loc_end = loc.loc_end in
+    let orelse p1 p2 = if not (is_dummy_pos p1) then p1 else p2 in
+    orelse loc_start loc_end, orelse loc_end loc_start in
   let p ppf = Format.fprintf ppf in
-  let pp_range ppf (start, end_) =
-    if start = end_ then
-      p ppf " %d" start
+  if is_dummy_pos loc_start && is_dummy_pos loc_end then
+    p ppf "(At unknown location)"
+  else begin
+    let (start_line, start_col) = extract loc.loc_start in
+    let (end_line, end_col) = extract loc.loc_end in
+    let pp_range ppf (start, end_) =
+      if start = end_ then
+        p ppf " %d" start
+      else
+        p ppf "s %d-%d" start end_
+    in
+    p ppf "@[";
+    begin if fname <> "" then
+      p ppf "File %S,@ l" fname
     else
-      p ppf "s %d-%d" start end_
-  in
-  p ppf "@[";
-  begin if fname <> "" then
-    p ppf "File %S,@ l" fname
-  else
-    p ppf "L"
-  end;
-  p ppf "ine%a,@ character%a:@ "
-    pp_range (start_line, end_line)
-    pp_range (start_col, end_col)
-    ;
+      p ppf "L"
+    end;
+    p ppf "ine%a,@ character%a"
+      pp_range (start_line, end_line)
+      pp_range (start_col, end_col)
+  end
+
+let pp_template_parse_error ppf ({ loc; kind; } : template_parse_error) =
+  let p ppf = Format.fprintf ppf in
+  p ppf "@[%a:@ " pp_loc loc;
   begin match kind with
-  | Parsing -> p ppf "syntax error"
-  | Lexing msg -> p ppf "%s" msg
+  | Lexing msg ->
+    p ppf "%s" msg
+  | Parsing ->
+    p ppf "syntax error"
+  | Mismatched_section { start_name; end_name } ->
+    p ppf "Section mismatch: {{#%a}} is closed by {{/%a}}"
+      pp_dotted_name start_name
+      pp_dotted_name end_name
   end;
   p ppf ".@]"
 
+type render_error_kind =
+  | Invalid_param of { name: dotted_name; expected_form: string; }
+  | Missing_variable of { name: dotted_name; }
+  | Missing_section of { name: dotted_name; }
+  | Missing_partial of { name: name; }
+
+type render_error = { loc: loc; kind : render_error_kind }
+
+exception Render_error of render_error
+
+let pp_render_error ppf ({ loc; kind; } : render_error) =
+  let p ppf = Format.fprintf ppf in
+  p ppf "@[%a:@ " pp_loc loc;
+  begin match kind with
+  | Invalid_param { name; expected_form; } ->
+    p ppf "the value of '%a' is not a valid %s"
+      pp_dotted_name name
+      expected_form
+  | Missing_variable { name; } ->
+    p ppf "the variable '%a' is missing"
+      pp_dotted_name name
+  | Missing_section { name; } ->
+    p ppf "the section '%a' is missing"
+      pp_dotted_name name
+  | Missing_partial { name } ->
+    p ppf "the partial '%s' is missing"
+      name
+  end;
+  p ppf ".@]"
+
+
 let () =
+  let pretty_print exn_name pp_error err =
+    let buf = Buffer.create 42 in
+    Format.fprintf (Format.formatter_of_buffer buf)
+      "Mustache.%s:@\n%a@?"
+      exn_name
+      pp_error err;
+    Buffer.contents buf in
   Printexc.register_printer (function
-    | Parse_error err ->
-      let buf = Buffer.create 42 in
-      Format.fprintf (Format.formatter_of_buffer buf) "Mustache.Parse_error (%a)@." pp_error err;
-      Some (Buffer.contents buf)
+    | Template_parse_error err ->
+      Some (pretty_print "Template_parse_error" pp_template_parse_error err)
+    | Render_error err ->
+      Some (pretty_print "Render_error" pp_render_error err)
     | _ -> None
   )
 
@@ -239,51 +310,59 @@ end = struct
     | top :: rest -> find_name (top, rest) name
 end
 
+let raise_err loc kind =
+  raise (Render_error { loc; kind })
+
 module Lookup = struct
-  let scalar ?(strict=true) = function
+  let scalar ?(strict=true) ~loc ~name = function
     | `Null -> if strict then "null" else ""
     | `Bool true -> "true"
     | `Bool false -> "false"
     | `Float f -> Printf.sprintf "%.12g" f
     | `String s -> s
-    | `A _ | `O _ -> raise (Invalid_param "Lookup.scalar: not a scalar")
+    | `A _ | `O _ ->
+      raise_err loc (Invalid_param { name; expected_form = "scalar" })
 
-  let simple_name ?(strict=true) ctxs n =
+  let simple_name ?(strict=true) ctxs ~loc n =
     match Contexts.find_name ctxs n with
     | None ->
-      if strict then raise (Missing_variable n) else None
+      if strict then raise_err loc (Missing_variable { name = [n] });
+      None
     | Some _ as result -> result
 
-  let dotted_name ?(strict=true) ctxs ~key =
-    let rec lookup (js : Json.value) ~key =
+  let dotted_name ?(strict=true) ctxs ~loc ~key =
+    let rec lookup acc (js : Json.value) ~key =
       match key with
       | [] -> Some js
       | n :: ns ->
         match js with
         | `Null | `Float _ | `Bool _
-        | `String _ | `A _ -> raise (Invalid_param ("str. not an object"))
+        | `String _ | `A _ ->
+          raise_err loc (Invalid_param { name = List.rev acc; expected_form = "object" })
         | `O dict ->
           match List.assoc n dict with
           | exception Not_found ->
-            if strict then raise (Missing_variable n) else None
-          | js -> lookup js ns
+            if strict then raise_err loc (Missing_variable { name = List.rev (n :: acc) });
+            None
+          | js -> lookup (n :: acc) js ns
     in
     match key with
     | [] -> Some (Contexts.top ctxs)
     | n :: ns ->
-      match simple_name ~strict ctxs n with
+      match simple_name ~strict ctxs ~loc n with
       | None -> None
-      | Some js -> lookup js ns
+      | Some js -> lookup [n] js ns
 
-  let str ?(strict=true) ctxs ~key =
-    match dotted_name ~strict ctxs ~key with
+  let str ?(strict=true) ctxs ~loc ~key =
+    match dotted_name ~strict ctxs ~loc ~key with
     | None -> ""
-    | Some js -> scalar ~strict js
+    | Some js -> scalar ~strict ~loc ~name:key js
 
-  let section ?(strict=true) ctxs ~key =
-    let key_s = string_of_dotted_name key in
-    match dotted_name ~strict:false ctxs ~key with
-    | None -> if strict then raise (Missing_section key_s) else `Bool false
+  let section ?(strict=true) ctxs ~loc ~key =
+    match dotted_name ~strict:false ctxs ~loc ~key with
+    | None ->
+      if strict then raise_err loc (Missing_section { name = key });
+      `Bool false
     | Some js ->
       match js with
       (* php casting *)
@@ -291,8 +370,8 @@ module Lookup = struct
       | (`A _ | `O _) as js -> js
       | _ -> js
 
-  let inverted ctxs ~key =
-    match dotted_name ~strict:false ctxs ~key with
+  let inverted ctxs ~loc ~key =
+    match dotted_name ~strict:false ctxs ~loc ~key with
     | None -> true
     | Some (`A [] | `Bool false | `Null) -> true
     | _ -> false
@@ -346,26 +425,28 @@ module Render = struct
       ) (List.tl lines)
     in
 
-    let rec render indent m (ctxs : Contexts.t) = match m.desc with
+    let rec render indent m (ctxs : Contexts.t) =
+      let loc = m.loc in
+      match m.desc with
 
       | String s ->
         print_indented_string indent s
 
       | Escaped name ->
         align indent;
-        Buffer.add_string buf (escape_html (Lookup.str ~strict ~key:name ctxs))
+        Buffer.add_string buf (escape_html (Lookup.str ~strict ~loc ~key:name ctxs))
 
       | Unescaped name ->
         align indent;
-        Buffer.add_string buf (Lookup.str ~strict ~key:name ctxs)
+        Buffer.add_string buf (Lookup.str ~strict ~loc ~key:name ctxs)
 
       | Inverted_section s ->
-        if Lookup.inverted ctxs s.name
+        if Lookup.inverted ctxs ~loc ~key:s.name
         then render indent s.contents ctxs
 
       | Section s ->
         let enter ctx = render indent s.contents (Contexts.add ctxs ctx) in
-        begin match Lookup.section ~strict ctxs ~key:s.name with
+        begin match Lookup.section ~strict ctxs ~loc ~key:s.name with
         | `Bool false -> ()
         | `A elems    -> List.iter enter elems
         | elem        -> enter elem
@@ -375,7 +456,8 @@ module Render = struct
         begin match (Lazy.force contents, strict) with
         | Some p, _ -> render (indent + partial_indent) p ctxs
         | None, false -> ()
-        | None, true -> raise (Missing_partial name)
+        | None, true ->
+          raise_err loc (Missing_partial { name })
         end
 
       | Comment _c -> ()
@@ -464,6 +546,9 @@ end
 
 module With_locations = struct
   include Locs
+
+  (* re-exported here for backward-compatibility *)
+  type nonrec loc = loc = { loc_start: Lexing.position; loc_end: Lexing.position }
 
   let dummy_loc = dummy_loc
   let parse_lx = parse_lx

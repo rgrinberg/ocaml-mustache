@@ -23,16 +23,11 @@
 %{
   open Mustache_types
   open Mustache_types.Locs
-  let parse_section start_s end_s contents =
-    if start_s = end_s
-    then { contents; name=start_s }
-    else
-      let msg =
-        Printf.sprintf "Mismatched section %s with %s"
-                       (string_of_dotted_name start_s)
-                       (string_of_dotted_name end_s)
-      in
-      raise (Invalid_template msg)
+
+  let parse_section start_name end_name contents =
+    if start_name <> end_name then
+      raise (Mismatched_section { start_name; end_name });
+    { contents; name = start_name }
 
   let with_loc (startpos, endpos) desc =
     let loc =

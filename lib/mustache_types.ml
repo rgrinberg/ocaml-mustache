@@ -23,6 +23,10 @@
 type name = string
 type dotted_name = string list
 
+type loc =
+  { loc_start: Lexing.position;
+    loc_end: Lexing.position }
+
 let pp_dotted_name fmt = function
   | [] ->
     Format.fprintf fmt "."
@@ -35,10 +39,6 @@ let string_of_dotted_name n =
 
 module Locs = struct
   [@@@warning "-30"]
-
-  type loc =
-    { loc_start: Lexing.position;
-      loc_end: Lexing.position }
 
   type desc =
     | String of string
@@ -82,8 +82,9 @@ module No_locs = struct
       contents: t option Lazy.t }
 end
 
-exception Invalid_param of string
-exception Invalid_template of string
-exception Missing_variable of string
-exception Missing_section of string
-exception Missing_partial of string
+(* this exception is used internally in the parser,
+   never exposed to users *)
+exception Mismatched_section of {
+  start_name: dotted_name;
+  end_name: dotted_name;
+}
