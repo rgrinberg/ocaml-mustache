@@ -54,10 +54,6 @@ rule space = parse
   | blank newline { new_line lexbuf; space lexbuf }
   | blank { () }
 
-and id = parse
-  | id  { lexeme lexbuf }
-  | eof { raise (Error "id expected") }
-
 and ident = parse
   | ident { lexeme lexbuf }
   | eof   { raise (Error "ident expected") }
