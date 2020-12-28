@@ -37,16 +37,13 @@
 %}
 
 %token EOF
-%token END
-%token <string list> ESCAPE_START
-%token <string list> UNESCAPE_START_AMPERSAND
-%token <string list> SECTION_INVERT_START
-%token <string list> SECTION_START
-%token <string list> SECTION_END
-%token <int * string> PARTIAL_START
-%token <string list> UNESCAPE_START
+%token <string list> ESCAPE
+%token <string list> UNESCAPE
+%token <string list> OPEN_INVERTED_SECTION
+%token <string list> OPEN_SECTION
+%token <string list> CLOSE_SECTION
+%token <int * string> PARTIAL
 %token <string> COMMENT
-%token UNESCAPE_END
 
 %token <string> RAW
 
@@ -56,24 +53,23 @@
 %%
 
 section:
-  | ss = SECTION_INVERT_START END
+  | ss = OPEN_INVERTED_SECTION
     e = mustache_expr
-    se = SECTION_END END {
+    se = CLOSE_SECTION {
     with_loc $sloc
       (Inverted_section (parse_section ss se e))
   }
-  | ss = SECTION_START END
+  | ss = OPEN_SECTION
     e = mustache_expr
-    se = SECTION_END END {
+    se = CLOSE_SECTION {
     with_loc $sloc
       (Section (parse_section ss se e))
   }
 
 mustache_element:
-  | elt = UNESCAPE_START UNESCAPE_END { with_loc $sloc (Unescaped elt) }
-  | elt = UNESCAPE_START_AMPERSAND END { with_loc $sloc (Unescaped elt) }
-  | elt = ESCAPE_START END { with_loc $sloc (Escaped elt) }
-  | elt = PARTIAL_START END {
+  | elt = UNESCAPE { with_loc $sloc (Unescaped elt) }
+  | elt = ESCAPE { with_loc $sloc (Escaped elt) }
+  | elt = PARTIAL {
       with_loc $sloc
         (Partial { indent = fst elt;
                    name = snd elt;
