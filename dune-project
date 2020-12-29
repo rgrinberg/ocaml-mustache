@@ -29,4 +29,4 @@ Contains the `mustache` command line utility for driving logic-less templates.
   (ezjsonm :with-test)
   (menhir (>= 20180703))
   (cmdliner (>= 1.0.4))
-  (ocaml (>= 4.06))))
+  (ocaml (>= 4.08))))

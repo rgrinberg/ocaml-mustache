@@ -101,8 +101,10 @@ and mustache = parse
   | "{{&"        { UNESCAPE (lex_tag lexbuf space ident (end_on "}}") |> split_ident) }
   | "{{#"        { OPEN_SECTION (lex_tag lexbuf space ident (end_on "}}") |> split_ident) }
   | "{{^"        { OPEN_INVERTED_SECTION (lex_tag lexbuf space ident (end_on "}}") |> split_ident) }
-  | "{{/"        { CLOSE_SECTION (lex_tag lexbuf space ident (end_on "}}") |> split_ident) }
+  | "{{/"        { CLOSE (lex_tag lexbuf space partial_name (end_on "}}")) }
   | "{{>"        { PARTIAL (0, lex_tag lexbuf space partial_name (end_on "}}")) }
+  | "{{<"        { OPEN_PARTIAL_WITH_PARAMS (0, lex_tag lexbuf space partial_name (end_on "}}")) }
+  | "{{$"        { OPEN_PARAM (lex_tag lexbuf space ident (end_on "}}")) }
   | "{{!"        { COMMENT (tok_arg lexbuf (comment [])) }
   | raw newline  { new_line lexbuf; RAW (lexeme lexbuf) }
   | raw          { RAW (lexeme lexbuf) }
@@ -191,6 +193,8 @@ and mustache = parse
          match toks_after_blank with
          | (PARTIAL (_      , name), loc1, loc2) :: rest ->
            (PARTIAL (skipped, name), loc1, loc2) :: rest
+         | (OPEN_PARTIAL_WITH_PARAMS (_      , name), loc1, loc2) :: rest ->
+           (OPEN_PARTIAL_WITH_PARAMS (skipped, name), loc1, loc2) :: rest
          | _ -> toks
        in
        let toks =
@@ -202,8 +206,10 @@ and mustache = parse
              standalone acc rest
            | ((OPEN_SECTION _
               | OPEN_INVERTED_SECTION _
-              | CLOSE_SECTION _
+              | CLOSE _
               | PARTIAL _
+              | OPEN_PARTIAL_WITH_PARAMS _
+              | OPEN_PARAM _
               | COMMENT _), _, _) as tok :: rest ->
              (* collect standalone tags *)
              standalone (tok :: acc) rest
