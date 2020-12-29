@@ -1,5 +1,5 @@
-  $ touch foo.json
-  $ touch foo.mustache
+  $ echo "{}" > foo.json
+  $ echo "" > foo.mustache
 
 Nonexistent json file:
   $ mustache nonexistent.json foo.mustache

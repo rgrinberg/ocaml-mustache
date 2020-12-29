@@ -1,6 +1,9 @@
 ### 3.2.0
 
-* Improve error messages (@gasche, #47 and #51)
+* Partials are now supported in the `mustache` command-line tool (@gasche, #57)
+  They are interpreted as template inclusion: "{{>foo/bar}}" will include
+  "foo/bar.mustache", relative to the current working directory.
+* Improve error messages (@gasche, #47, #51, #56)
   Note: the exceptions raised by Mustache have changed, this breaks
   compatibility for users that would catch and deconstruct existing
   exceptions.
