@@ -110,6 +110,41 @@ and mustache = parse
   | eof          { EOF }
 
 {
+   (* Trim whitespace around standalone tags.
+
+      The Mustache specification is careful with its treatment of
+      whitespace. In particular, tags that do not themselves expand to
+      visible content are defined as "standalone", with the
+      requirement that if one or several standalone tags "stand alone"
+      in a line (there is nothing else but whitespace), the whitespace
+      of this line should be ommitted.
+
+      For example, this means that:
+        {{#foo}}
+        I can access {{var}} inside the section.
+        {{/foo}
+      takes, once rendered, only 1 line instead of 3: the newlines
+      after {{#foo}} and {{/foo}} are part of the "standalone
+      whitespace", so they are not included in the output.
+
+      Note: if a line contains only whitespace, no standalone tag,
+      then the whitespace is preserved.
+
+      We implement this by a post-processing past on the lexer token
+      stream.  We split the token stream, one sub-stream per line, and
+      then for each token line we determine if satisfies the
+      standalone criterion.
+
+      Another information collected at the same time, as it is also
+      part of whitespace processing, is the "indentation" of partials:
+      if a partial expands to multi-line content, and if it is
+      intended at the use-site (it is at a non-zero column with only
+      whitespace before it on the line), then the specification
+      mandates that all its lines should be indented by the same
+      amount.  We collect this information during the whitespace
+      postprocessing of tokens, and store it in the Partial
+      constructor as the first parameter.
+   *)
    let handle_standalone lexer lexbuf =
      let ends_with_newline s =
        String.length s > 0 &&
@@ -148,40 +183,54 @@ and mustache = parse
        in
        loop 0 l
      in
-     let is_standalone toks =
-       let (skipped, toks) = skip_blanks toks in
-       match toks with
-       | ((OPEN_SECTION _
-          | OPEN_INVERTED_SECTION _
-          | CLOSE_SECTION _
-          | PARTIAL _
-          | COMMENT _), _, _) as tok :: toks' ->
-         let (_, toks_rest) = skip_blanks toks' in
-         begin match toks_rest with
-         | [] | [(EOF, _, _)] ->
-           let tok =
-             match tok with
-             | (PARTIAL (_, p), loc1, loc2) ->
-               (PARTIAL (skipped, p), loc1, loc2)
-             | _ -> tok
-           in
-           Some (tok, toks_rest)
-         | _ -> None
-         end
-       | _ -> None
+     let trim_standalone toks =
+       let toks =
+         (* if the line starts with a partial,
+            turn the skipped blank into partial indentation *)
+         let (skipped, toks_after_blank) = skip_blanks toks in
+         match toks_after_blank with
+         | (PARTIAL (_      , name), loc1, loc2) :: rest ->
+           (PARTIAL (skipped, name), loc1, loc2) :: rest
+         | _ -> toks
+       in
+       let toks =
+         (* if the line only contains whitespace and at least one standalone tags,
+            remove all whitespace *)
+         let rec standalone acc = function
+           | (RAW s, _, _) :: rest when is_blank s ->
+             (* omit whitespace *)
+             standalone acc rest
+           | ((OPEN_SECTION _
+              | OPEN_INVERTED_SECTION _
+              | CLOSE_SECTION _
+              | PARTIAL _
+              | COMMENT _), _, _) as tok :: rest ->
+             (* collect standalone tags *)
+             standalone (tok :: acc) rest
+           | [] | (EOF, _, _) :: _ ->
+             (* end of line *)
+             if (acc = []) then
+               (* if acc is empty, the line only contains whitespace,
+                  which should be kept *)
+               None
+             else
+               Some (List.rev acc)
+           | _non_blank :: _rest ->
+             (* non-blank, non-standalone token *)
+             None
+         in
+         match standalone [] toks with
+         | None -> toks
+         | Some standalone_toks -> standalone_toks
+       in
+       assert (toks <> []);
+       toks
      in
-
      let buffer = ref [] in
      fun () ->
-       match !buffer with
-       | tok :: toks ->
-         buffer := toks; tok
-       | [] ->
-         let toks = slurp_line () in
-         match is_standalone toks with
-         | Some (tok_standalone, toks_rest) ->
-           buffer := toks_rest;
-           tok_standalone
-         | None ->
-           buffer := List.tl toks; List.hd toks
+       let toks = match !buffer with
+         | (_ :: _) as toks -> toks
+         | [] -> trim_standalone (slurp_line ())
+       in
+       buffer := List.tl toks; List.hd toks
 }
