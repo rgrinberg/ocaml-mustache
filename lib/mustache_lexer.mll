@@ -25,35 +25,28 @@
 
   exception Error of string
 
-  let tok_arg f lexbuf =
+  let tok_arg lexbuf f =
     let start_p = lexbuf.Lexing.lex_start_p in
     let x = f lexbuf in
     lexbuf.Lexing.lex_start_p <- start_p;
     x
 
-  let with_space space f =
-    tok_arg (fun lexbuf ->
+  let lex_tag lexbuf space ident tag_end =
+    tok_arg lexbuf (fun lexbuf ->
       let () = space lexbuf in
-      let x = f lexbuf in
+      let name = ident lexbuf in
       let () = space lexbuf in
-      x
+      let () = tag_end lexbuf in
+      name
     )
-
-  let split_on_char sep s =
-    let open String in
-    let r = ref [] in
-    let j = ref (length s) in
-    for i = length s - 1 downto 0 do
-      if unsafe_get s i = sep then begin
-        r := sub s (i + 1) (!j - i - 1) :: !r;
-        j := i
-      end
-    done;
-    sub s 0 !j :: !r
 
   let split_ident ident =
     if ident = "." then []
-    else split_on_char '.' ident
+    else String.split_on_char '.' ident
+
+  let check_mustaches ~expected ~lexed =
+    if expected <> lexed then
+      raise (Error (Printf.sprintf "'%s' expected" expected))
 }
 
 let blank = [' ' '\t']*
@@ -66,13 +59,12 @@ rule space = parse
   | blank newline { new_line lexbuf; space lexbuf }
   | blank { () }
 
-and id = parse
-  | id  { lexeme lexbuf }
-  | eof { raise (Error "id expected") }
-
 and ident = parse
   | ident { lexeme lexbuf }
-  | eof   { raise (Error "ident expected") }
+  | ""    { raise (Error "ident expected") }
+
+and end_on expected = parse
+  | ("}}" | "}}}" | "") as lexed { check_mustaches ~expected ~lexed }
 
 and comment acc = parse
   | "}}"        { String.concat "" (List.rev acc) }
@@ -82,16 +74,14 @@ and comment acc = parse
   | eof         { raise (Error "non-terminated comment") }
 
 and mustache = parse
-  | "{{{"        { UNESCAPE_START (with_space space ident lexbuf |> split_ident) }
-  | "{{&"        { UNESCAPE_START_AMPERSAND (with_space space ident lexbuf |> split_ident) }
-  | "{{#"        { SECTION_START (with_space space ident lexbuf |> split_ident) }
-  | "{{^"        { SECTION_INVERT_START (with_space space ident lexbuf |> split_ident) }
-  | "{{/"        { SECTION_END (with_space space ident lexbuf |> split_ident) }
-  | "{{>"        { PARTIAL_START (0, with_space space ident lexbuf) }
-  | "{{!"        { COMMENT (tok_arg (comment []) lexbuf) }
-  | "{{"         { ESCAPE_START (with_space space ident lexbuf |> split_ident) }
-  | "}}}"        { UNESCAPE_END }
-  | "}}"         { END }
+  | "{{"         { ESCAPE (lex_tag lexbuf space ident (end_on "}}") |> split_ident) }
+  | "{{{"        { UNESCAPE (lex_tag lexbuf space ident (end_on "}}}") |> split_ident) }
+  | "{{&"        { UNESCAPE (lex_tag lexbuf space ident (end_on "}}") |> split_ident) }
+  | "{{#"        { OPEN_SECTION (lex_tag lexbuf space ident (end_on "}}") |> split_ident) }
+  | "{{^"        { OPEN_INVERTED_SECTION (lex_tag lexbuf space ident (end_on "}}") |> split_ident) }
+  | "{{/"        { CLOSE_SECTION (lex_tag lexbuf space ident (end_on "}}") |> split_ident) }
+  | "{{>"        { PARTIAL (0, lex_tag lexbuf space ident (end_on "}}")) }
+  | "{{!"        { COMMENT (tok_arg lexbuf (comment [])) }
   | raw newline  { new_line lexbuf; RAW (lexeme lexbuf) }
   | raw          { RAW (lexeme lexbuf) }
   | ['{' '}']    { RAW (lexeme lexbuf) }
@@ -136,33 +126,24 @@ and mustache = parse
        in
        loop 0 l
      in
-     let segment_before tail l =
-       let rec loop acc = function
-         | [] -> List.rev acc
-         | l when l == tail -> List.rev acc
-         | y :: ys -> loop (y :: acc) ys
-       in
-       loop [] l
-     in
      let is_standalone toks =
        let (skipped, toks) = skip_blanks toks in
        match toks with
-       | (SECTION_START _, _, _) :: (END, _, _) :: toks'
-       | (SECTION_INVERT_START _, _, _) :: (END, _, _) :: toks'
-       | (SECTION_END _, _, _) :: (END, _, _) :: toks'
-       | (PARTIAL_START _, _, _) :: (END, _, _) :: toks'
-       | (COMMENT _, _, _) :: toks' ->
+       | ((OPEN_SECTION _
+          | OPEN_INVERTED_SECTION _
+          | CLOSE_SECTION _
+          | PARTIAL _
+          | COMMENT _), _, _) as tok :: toks' ->
          let (_, toks_rest) = skip_blanks toks' in
          begin match toks_rest with
          | [] | [(EOF, _, _)] ->
-           let toks_standalone =
-             segment_before toks' toks |>
-             function
-             | [(PARTIAL_START (_, p), loc1, loc2); tok_end] ->
-               [(PARTIAL_START (skipped, p), loc1, loc2); tok_end]
-             | toks -> toks
+           let tok =
+             match tok with
+             | (PARTIAL (_, p), loc1, loc2) ->
+               (PARTIAL (skipped, p), loc1, loc2)
+             | _ -> tok
            in
-           Some (toks_standalone, toks_rest)
+           Some (tok, toks_rest)
          | _ -> None
          end
        | _ -> None
@@ -176,9 +157,9 @@ and mustache = parse
        | [] ->
          let toks = slurp_line () in
          match is_standalone toks with
-         | Some (toks_standalone, toks_rest) ->
-           buffer := List.tl toks_standalone @ toks_rest;
-           List.hd toks_standalone
+         | Some (tok_standalone, toks_rest) ->
+           buffer := toks_rest;
+           tok_standalone
          | None ->
            buffer := List.tl toks; List.hd toks
 }

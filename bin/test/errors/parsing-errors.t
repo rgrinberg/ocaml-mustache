@@ -5,15 +5,14 @@ Delimiter problems:
   $ echo "{{foo" > $PROBLEM
   $ mustache foo.json $PROBLEM
   Template parse error:
-  File "no-closing-mustache.mustache", line 2, character 0: syntax error.
+  File "no-closing-mustache.mustache", line 2, character 0: '}}' expected.
   [3]
 
   $ PROBLEM=one-closing-mustache.mustache
   $ echo "{{foo}" > $PROBLEM
   $ mustache foo.json $PROBLEM
   Template parse error:
-  File "one-closing-mustache.mustache", lines 1-2, characters 6-0:
-  syntax error.
+  File "one-closing-mustache.mustache", line 1, character 5: '}}' expected.
   [3]
 
   $ PROBLEM=eof-before-variable.mustache
@@ -80,14 +79,14 @@ Mismatches between opening and closing mustaches:
   $ echo "{{ foo }}}" > $PROBLEM
   $ mustache foo.json $PROBLEM
   Template parse error:
-  File "two-three.mustache", lines 1-2, characters 10-0: syntax error.
+  File "two-three.mustache", line 1, characters 7-10: '}}' expected.
   [3]
 
   $ PROBLEM=three-two.mustache
   $ echo "{{{ foo }}" > $PROBLEM
   $ mustache foo.json $PROBLEM
   Template parse error:
-  File "three-two.mustache", lines 1-2, characters 10-0: syntax error.
+  File "three-two.mustache", line 1, characters 8-10: '}}}' expected.
   [3]
 
 
@@ -114,4 +113,14 @@ Mismatch between section-start and section-end:
   Template parse error:
   File "wrong-nesting.mustache", lines 1-2, characters 41-0:
   Section mismatch: {{#foo}} is closed by {{/bar}}.
+  [3]
+
+
+Weird cases that may confuse our lexer or parser:
+
+  $ PROBLEM=weird-tag-name.mustache
+  $ echo "{{.weird}} foo bar" > $PROBLEM
+  $ mustache foo.json $PROBLEM
+  Template parse error:
+  File "weird-tag-name.mustache", line 1, character 3: '}}' expected.
   [3]

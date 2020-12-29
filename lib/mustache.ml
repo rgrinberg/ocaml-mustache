@@ -413,7 +413,7 @@ module Render = struct
     in
 
     let print_indented_string indent s =
-      let lines = Mustache_lexer.split_on_char '\n' s in
+      let lines = String.split_on_char '\n' s in
       align indent; Buffer.add_string buf (List.hd lines);
       List.iter (fun line ->
         Buffer.add_char buf '\n';
