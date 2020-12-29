@@ -1,5 +1,4 @@
 (tests
  (libraries mustache ounit2 ezjsonm)
  (names test_mustache spec_mustache)
- (deps test_mustache.exe ../specs/comments.json ../specs/interpolation.json
-   ../specs/partials.json ../specs/sections.json ../specs/inverted.json))
+ (deps test_mustache.exe (glob_files ../specs/*.json)))
