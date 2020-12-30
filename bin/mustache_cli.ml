@@ -11,10 +11,14 @@ let load_file f =
   close_in ic;
   (Bytes.to_string s)
 
-let locate_template search_path relative_filename =
-  search_path
-  |> List.map (fun path -> Filename.concat path relative_filename)
-  |> List.find_opt Sys.file_exists
+let locate_template search_path filename =
+  if Filename.is_relative filename then
+    search_path
+    |> List.map (fun path -> Filename.concat path filename)
+    |> List.find_opt Sys.file_exists
+  else if Sys.file_exists filename then
+    Some filename
+  else None
 
 let load_template template_filename =
   let template_data = load_file template_filename in
