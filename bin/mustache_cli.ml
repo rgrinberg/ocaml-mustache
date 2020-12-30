@@ -11,6 +11,11 @@ let load_file f =
   close_in ic;
   (Bytes.to_string s)
 
+let locate_template search_path relative_filename =
+  search_path
+  |> List.map (fun path -> Filename.concat path relative_filename)
+  |> List.find_opt Sys.file_exists
+
 let load_template template_filename =
   let template_data = load_file template_filename in
   let lexbuf = Lexing.from_string template_data in
@@ -27,13 +32,14 @@ let load_template template_filename =
 let load_json json_filename =
   Ezjsonm.from_string (load_file json_filename)
 
-let run json_filename template_filename =
+let run search_path json_filename template_filename =
   let env = load_json json_filename in
   let tmpl = load_template template_filename in
   let partials name =
-    let path = Printf.sprintf "%s.mustache" name in
-    if not (Sys.file_exists path) then None
-    else Some (load_template path) in
+    let file = Printf.sprintf "%s.mustache" name in
+    let path = locate_template search_path file in
+    Option.map load_template path
+  in
   try
     let output = Mustache.render ~partials tmpl env in
     print_string output;
@@ -99,9 +105,24 @@ Mustache is:
     let doc = "mustache template" in
     Arg.(required & pos 1 (some file) None & info [] ~docv:"TEMPLATE.mustache" ~doc)
   in
-  Term.(const run $ json_file $ template_file),
+  let search_path =
+    let includes =
+      let doc = "Adds the directory $(docv) to the search path for partials." in
+      Arg.(value & opt_all dir [] & info ["I"] ~docv:"DIR" ~doc)
+    in
+    let no_working_dir =
+      let doc = "Disable the implicit inclusion of the working directory
+                 in the search path for partials." in
+      Arg.(value & flag & info ["no-working-dir"] ~doc)
+    in
+    let search_path includes no_working_dir =
+      if no_working_dir then includes
+      else Filename.current_dir_name :: includes
+    in
+    Term.(const search_path $ includes $ no_working_dir)
+  in
+  Term.(const run $ search_path $ json_file $ template_file),
   Term.info "mustache" ~doc ~man
-
 
 let () =
   let open Cmdliner in
