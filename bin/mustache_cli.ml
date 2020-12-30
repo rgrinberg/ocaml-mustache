@@ -34,7 +34,10 @@ let run json_filename template_filename =
     let path = Printf.sprintf "%s.mustache" name in
     if not (Sys.file_exists path) then None
     else Some (load_template path) in
-  try Mustache.render ~partials tmpl env |> print_endline
+  try
+    let output = Mustache.render ~partials tmpl env in
+    print_string output;
+    flush stdout
   with Mustache.Render_error err ->
     Format.eprintf "Template render error:@\n%a@."
       Mustache.pp_render_error err;
