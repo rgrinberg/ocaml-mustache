@@ -73,6 +73,17 @@ let run_command =
     `P "The $(i,ocaml-mustache) implementation is tested against
         the Mustache specification testsuite.
         All features are supported, except for lambdas and setting delimiter tags.";
+    `S Manpage.s_options;
+    `S "PARTIALS";
+    `P "The $(i,ocaml-mustache) library gives programmatic control over the meaning of partials {{>foo}}.
+        For the $(tname) tool, partials are interpreted as template file inclusion: '{{>foo}}' includes
+        the template file 'foo.mustache'.";
+    `P "Included files are resolved in a search path, which contains the current working directory
+        (unless the $(b,--no-working-dir) option is used)
+        and include directories passed through $(b,-I DIR) options.";
+    `P "If a file exists in several directories of the search path, the directory included first
+        (leftmost $(b,-I) option) has precedence, and the current working directory has precedence
+        over include directories.";
     `S Manpage.s_examples;
     `Pre
       {|
@@ -92,6 +103,25 @@ Hello OCaml!
 Mustache is:
 - simple
 - fun
+
+
+\$ cat page.mustache
+<html>
+  <body>
+    {{>hello}}
+  </body>
+</html>
+
+\$ $(tname) data.json page.mustache
+<html>
+  <body>
+    Hello OCaml!
+    Mustache is:
+    - simple
+    - fun
+  </body>
+</html>
+
 |};
     `S Manpage.s_bugs;
     `P "Report bugs on https://github.com/rgrinberg/ocaml-mustache/issues";
