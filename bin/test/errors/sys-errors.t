@@ -3,10 +3,15 @@
 
 Nonexistent json file:
   $ mustache nonexistent.json foo.mustache
-  Fatal error: exception Sys_error("nonexistent.json: No such file or directory")
-  [2]
+  mustache: DATA.json argument: no `nonexistent.json' file or directory
+  Usage: mustache [OPTION]... DATA.json TEMPLATE.mustache
+  Try `mustache --help' for more information.
+  [124]
 
 Nonexistent template file:
   $ mustache foo.json nonexistent.mustache
-  Fatal error: exception Sys_error("nonexistent.mustache: No such file or directory")
-  [2]
+  mustache: TEMPLATE.mustache argument: no `nonexistent.mustache' file or
+            directory
+  Usage: mustache [OPTION]... DATA.json TEMPLATE.mustache
+  Try `mustache --help' for more information.
+  [124]

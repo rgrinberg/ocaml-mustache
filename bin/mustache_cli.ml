@@ -40,11 +40,21 @@ let run json_filename template_filename =
       Mustache.pp_render_error err;
     exit 2
 
-let usage () =
-  print_endline "Usage: mustache-cli json_filename template_filename"
+let run_command =
+  let open Cmdliner in
+  let doc = "renders Mustache template from JSON data files" in
+  let json_file =
+    let doc = "data file in JSON format" in
+    Arg.(required & pos 0 (some file) None & info [] ~docv:"DATA.json" ~doc)
+  in
+  let template_file =
+    let doc = "mustache template" in
+    Arg.(required & pos 1 (some file) None & info [] ~docv:"TEMPLATE.mustache" ~doc)
+  in
+  Term.(const run $ json_file $ template_file),
+  Term.info "mustache" ~doc
+
 
 let () =
-  match Sys.argv with
-  | [| _ ; json_filename ; template_filename |]
-    -> run json_filename template_filename
-  | _ -> usage ()
+  let open Cmdliner in
+  Term.exit @@ Term.eval run_command
