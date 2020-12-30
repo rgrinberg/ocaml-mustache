@@ -46,6 +46,8 @@ exception Template_parse_error of template_parse_error
 
 val parse_lx : Lexing.lexbuf -> t
 val of_string : string -> t
+val of_channel : in_channel -> t
+val of_file : string -> t
 
 (** [pp_template_parse_error fmt err] prints a human-readable
     description of a template parse error on the given formatter. The
