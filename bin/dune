@@ -2,4 +2,13 @@
  (name mustache_cli)
  (public_name mustache)
  (modules mustache_cli)
- (libraries mustache ezjsonm))
+ (libraries mustache ezjsonm cmdliner))
+
+(rule
+ (with-stdout-to mustache.1
+  (run mustache --help=groff)))
+
+(install
+ (section man)
+ (package mustache)
+ (files mustache.1))
