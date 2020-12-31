@@ -53,44 +53,43 @@ let run search_path json_filename template_filename =
       Mustache.pp_render_error err;
     exit 2
 
-let run_command =
-  let open Cmdliner in
-  let doc = "renders Mustache template from JSON data files" in
-  let man = [
-    `S Manpage.s_description;
-    `P "$(tname) is a command-line tool coming with the $(i,ocaml-mustache) library,
-        an OCaml implementation of the Mustache template format.
-        $(tname) takes a data file and a template file as command-line parameters;
-        it renders the populated template on standard output.";
+let manpage = Cmdliner.[
+  `S Manpage.s_description;
+  `P "$(tname) is a command-line tool coming with the $(i,ocaml-mustache) library,
+      an OCaml implementation of the Mustache template format.
+      $(tname) takes a data file and a template file as command-line parameters;
+      it renders the populated template on standard output.";
 
-    `P "Mustache is a simple and popular template format,
-        with library implementations in many programming languages.
-        It is named from its {{..}} delimiters.";
+  `P "Mustache is a simple and popular template format,
+      with library implementations in many programming languages.
+      It is named from its {{..}} delimiters.";
 
-    `I ("Mustache website",
-        "https://mustache.github.io/");
-    `I ("Mustache templates documentation",
-        "https://mustache.github.io/mustache.5.html");
-    `I ("ocaml-mustache website:",
-        "https://github.com/rgrinberg/ocaml-mustache");
+  `I ("Mustache website",
+      "https://mustache.github.io/");
+  `I ("Mustache templates documentation",
+      "https://mustache.github.io/mustache.5.html");
+  `I ("$(i,ocaml-mustache) website:",
+      "https://github.com/rgrinberg/ocaml-mustache");
 
-    `P "The $(i,ocaml-mustache) implementation is tested against
-        the Mustache specification testsuite.
-        All features are supported, except for lambdas and setting delimiter tags.";
-    `S Manpage.s_options;
-    `S "PARTIALS";
-    `P "The $(i,ocaml-mustache) library gives programmatic control over the meaning of partials {{>foo}}.
-        For the $(tname) tool, partials are interpreted as template file inclusion: '{{>foo}}' includes
-        the template file 'foo.mustache'.";
-    `P "Included files are resolved in a search path, which contains the current working directory
-        (unless the $(b,--no-working-dir) option is used)
-        and include directories passed through $(b,-I DIR) options.";
-    `P "If a file exists in several directories of the search path, the directory included first
-        (leftmost $(b,-I) option) has precedence, and the current working directory has precedence
-        over include directories.";
-    `S Manpage.s_examples;
-    `Pre
-      {|
+  `S Manpage.s_options;
+  (* The content of this section is filled by Cmdliner; it is used here
+     to enforce the placement of the non-standard sections below. *)
+
+  `S "PARTIALS";
+  `P "The $(i,ocaml-mustache) library gives programmatic control over the meaning of partials {{>foo}}.
+      For the $(tname) tool, partials are interpreted as template file inclusion: '{{>foo}}' includes
+      the template file 'foo.mustache'.";
+  `P "Included files are resolved in a search path, which contains the current working directory
+      (unless the $(b,--no-working-dir) option is used)
+      and include directories passed through $(b,-I DIR) options.";
+  `P "If a file exists in several directories of the search path, the directory included first
+      (leftmost $(b,-I) option) has precedence, and the current working directory has precedence
+      over include directories.";
+
+  `S Manpage.s_examples;
+  `Pre {|
+## Simple usage.
+
 \$ cat data.json
 { "name": "OCaml",
   "qualities": [{"name": "simple"}, {"name": "fun"}] }
@@ -109,6 +108,8 @@ Mustache is:
 - fun
 
 
+## Using a partial to include a subpage; see $(b,PARTIALS).
+
 \$ cat page.mustache
 <html>
   <body>
@@ -124,13 +125,24 @@ Mustache is:
     - simple
     - fun
   </body>
-</html>
+</html>|};
 
-|};
-    `S Manpage.s_bugs;
-    `P "Report bugs on https://github.com/rgrinberg/ocaml-mustache/issues";
-  ]
-  in
+  `S "CONFORMING TO";
+
+  `P "The $(i,ocaml-mustache) implementation is tested against
+      the Mustache specification testsuite.
+      All features are supported, except for lambdas and setting delimiter tags.";
+
+  `I ("Mustache specification testsuite",
+      "https://github.com/mustache/spec");
+
+  `S "REPORTING BUGS";
+  `P "Report bugs on https://github.com/rgrinberg/ocaml-mustache/issues";
+]
+
+let run_command =
+  let open Cmdliner in
+  let doc = "renders Mustache template from JSON data files" in
   let json_file =
     let doc = "data file in JSON format" in
     Arg.(required & pos 0 (some file) None & info [] ~docv:"DATA.json" ~doc)
@@ -156,7 +168,7 @@ Mustache is:
     Term.(const search_path $ includes $ no_working_dir)
   in
   Term.(const run $ search_path $ json_file $ template_file),
-  Term.info "mustache" ~doc ~man
+  Term.info "mustache" ~doc ~man:manpage
 
 let () =
   let open Cmdliner in
