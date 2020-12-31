@@ -150,6 +150,19 @@ let manpage = Cmdliner.[
       (leftmost $(b,-I) option) has precedence, and the current working directory has precedence
       over include directories.";
 
+  `S "TEMPLATE INHERITANCE / PARTIALS WITH PARAMETERS";
+
+  `P "$(i,ocaml-mustache) supports a common extension to the original Mustache specification,
+      called 'template inheritance' or 'parent partials', or here 'partials with parameters'.
+      In addition to usual partials '{{>foo}}', which include a partial template, one can use
+      the syntax '{{<bar}} {{\\$param1}}...{{/param1}} {{\\$param2}}...{{/param2}} {{/bar}}' to
+      pass parameters to the included partial template. Inside this included template, parameters
+      are used as '{{\\$param}}...{{/param}}', with the inner content being used by default
+      if this parameter was not specified by the caller.";
+
+  `P "This is typically used to define page layouts that are wrapped 'around' the current template.
+      See our EXAMPLES.";
+
   `S Manpage.s_examples;
   `Pre {|
 ## Simple usage.
@@ -172,7 +185,7 @@ Mustache is:
 - fun
 
 
-## Using a partial to include a subpage; see $(b,PARTIALS).
+## Including a subpage; see $(b,PARTIALS).
 
 \$ cat page.mustache
 <html>
@@ -189,6 +202,47 @@ Mustache is:
     - simple
     - fun
   </body>
+</html>
+
+
+## Including a layount around a page; see $(b,PARTIALS WITH PARAMETERS).
+
+\$ cat new-post.json
+{
+  "title": "New Post",
+  "authors": "Foo and Bar",
+  "date": "today",
+  "content": "Shiny new content."
+}
+
+\$ cat post.mustache
+{{<post-layout}}
+  {{\$page-title}}Post: {{title}}{{/page-title}}
+  {{\$content}}
+    <h1>{{title}}</h1>
+    <p>{{content}}</p>
+  {{/content}}
+{{/post-layout}}
+
+\$ cat post-layout.mustache
+<html>
+  <head>
+    <title>{{\$page-title}}Default Title{{/page-title}}</title>
+  </head>
+  <body>
+    {{\$content}}{{/content}}
+  </body>
+</html>
+
+\$ $(tname) new-post.json post.mustache
+<html>
+  <head>
+    <title>Post: New Post</title>
+  </head>
+  <body>
+    <h1>New Post</h1>
+    <p>Shiny new content.</p>
+  </body>
 </html>|};
 
   `S "CONFORMING TO";
@@ -199,6 +253,9 @@ Mustache is:
 
   `I ("Mustache specification testsuite",
       "https://github.com/mustache/spec");
+
+  `I ("Semi-official specification of PARTIALS WITH PARAMETERS",
+      "https://github.com/mustache/spec/pull/75");
 
   `S "REPORTING BUGS";
   `P "Report bugs on https://github.com/rgrinberg/ocaml-mustache/issues";

@@ -36,12 +36,18 @@ let rendered =
     exit 2
 ```
 
-Spec compliance
------------
+Supported template language
+---------------------------
 
-ocaml-mustache complies¹ to the latest [mustache specification](https://github.com/mustache/spec/tree/v1.1.3), and is automatically tested against it.
+ocaml-mustache accepts the whole Mustache template language, except:
+- it does not support setting delimiter tags to something else than '{{' and '}}'.
+- it does not support lambdas inside the provided data
 
-¹: except for lambdas and set delimiters tags.
+It is automatically tested against the latest
+[mustache specification testsuite](https://github.com/mustache/spec/tree/v1.1.3).
+
+ocaml-mustache also supports template inheritance / partials with parameters,
+tested against the [semi-official specification](https://github.com/mustache/spec/pull/75).
 
 Todo/Wish List
 -----------
