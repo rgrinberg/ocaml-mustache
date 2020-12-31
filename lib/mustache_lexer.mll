@@ -55,6 +55,25 @@ let raw = [^ '{' '}' '\n']*
 let id = ['a'-'z' 'A'-'Z' '-' '_' '/'] ['a'-'z' 'A'-'Z' '0'-'9' '-' '_' '/']*
 let ident = ('.' | id ('.' id)*)
 
+(* The grammar of partials is very relaxed compared to normal
+   identifiers: we want to allow dots anywhere to express relative
+   paths such as ../foo (this is consistent with other implementations
+   such as the 'mustache' binary provided by the Ruby implementation),
+   and in general we don't know what is going to be used, given that
+   partials are controlled programmatically.
+
+   We forbid spaces, to ensure that the behavior of trimming spaces
+   around the partial name is consistent with the other tag, and we
+   forbid newlines and mustaches to avoid simple delimiter mistakes
+   ({{> foo } ... {{bar}}) being parsed as valid partial names.
+
+   (Note: if one wishes to interpret partials using lambdas placed
+   within the data (foo.bar interpreted as looking up 'foo' then 'bar'
+   in the input data and hoping to find a user-decided representation
+   of a function, it is of course possible to restrict the valid names
+   and split on dots on the user side.) *)
+let partial_name = [^ ' ' '\t' '\n' '{' '}']*
+
 rule space = parse
   | blank newline { new_line lexbuf; space lexbuf }
   | blank { () }
@@ -62,6 +81,9 @@ rule space = parse
 and ident = parse
   | ident { lexeme lexbuf }
   | ""    { raise (Error "ident expected") }
+
+and partial_name = parse
+  | partial_name { lexeme lexbuf }
 
 and end_on expected = parse
   | ("}}" | "}}}" | "") as lexed { check_mustaches ~expected ~lexed }
@@ -80,7 +102,7 @@ and mustache = parse
   | "{{#"        { OPEN_SECTION (lex_tag lexbuf space ident (end_on "}}") |> split_ident) }
   | "{{^"        { OPEN_INVERTED_SECTION (lex_tag lexbuf space ident (end_on "}}") |> split_ident) }
   | "{{/"        { CLOSE_SECTION (lex_tag lexbuf space ident (end_on "}}") |> split_ident) }
-  | "{{>"        { PARTIAL (0, lex_tag lexbuf space ident (end_on "}}")) }
+  | "{{>"        { PARTIAL (0, lex_tag lexbuf space partial_name (end_on "}}")) }
   | "{{!"        { COMMENT (tok_arg lexbuf (comment [])) }
   | raw newline  { new_line lexbuf; RAW (lexeme lexbuf) }
   | raw          { RAW (lexeme lexbuf) }

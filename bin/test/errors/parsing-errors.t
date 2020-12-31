@@ -62,7 +62,7 @@ Delimiter problems:
   $ echo "{{>" > $PROBLEM
   $ mustache foo.json $PROBLEM
   Template parse error:
-  File "eof-before-partial.mustache", line 2, character 0: ident expected.
+  File "eof-before-partial.mustache", line 2, character 0: '}}' expected.
   [3]
 
   $ PROBLEM=eof-in-comment.mustache

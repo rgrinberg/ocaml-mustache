@@ -11,6 +11,15 @@ let load_file f =
   close_in ic;
   (Bytes.to_string s)
 
+let locate_template search_path filename =
+  if Filename.is_relative filename then
+    search_path
+    |> List.map (fun path -> Filename.concat path filename)
+    |> List.find_opt Sys.file_exists
+  else if Sys.file_exists filename then
+    Some filename
+  else None
+
 let load_template template_filename =
   let template_data = load_file template_filename in
   let lexbuf = Lexing.from_string template_data in
@@ -27,14 +36,18 @@ let load_template template_filename =
 let load_json json_filename =
   Ezjsonm.from_string (load_file json_filename)
 
-let run json_filename template_filename =
+let run search_path json_filename template_filename =
   let env = load_json json_filename in
   let tmpl = load_template template_filename in
   let partials name =
-    let path = Printf.sprintf "%s.mustache" name in
-    if not (Sys.file_exists path) then None
-    else Some (load_template path) in
-  try Mustache.render ~partials tmpl env |> print_endline
+    let file = Printf.sprintf "%s.mustache" name in
+    let path = locate_template search_path file in
+    Option.map load_template path
+  in
+  try
+    let output = Mustache.render ~partials tmpl env in
+    print_string output;
+    flush stdout
   with Mustache.Render_error err ->
     Format.eprintf "Template render error:@\n%a@."
       Mustache.pp_render_error err;
@@ -64,6 +77,17 @@ let run_command =
     `P "The $(i,ocaml-mustache) implementation is tested against
         the Mustache specification testsuite.
         All features are supported, except for lambdas and setting delimiter tags.";
+    `S Manpage.s_options;
+    `S "PARTIALS";
+    `P "The $(i,ocaml-mustache) library gives programmatic control over the meaning of partials {{>foo}}.
+        For the $(tname) tool, partials are interpreted as template file inclusion: '{{>foo}}' includes
+        the template file 'foo.mustache'.";
+    `P "Included files are resolved in a search path, which contains the current working directory
+        (unless the $(b,--no-working-dir) option is used)
+        and include directories passed through $(b,-I DIR) options.";
+    `P "If a file exists in several directories of the search path, the directory included first
+        (leftmost $(b,-I) option) has precedence, and the current working directory has precedence
+        over include directories.";
     `S Manpage.s_examples;
     `Pre
       {|
@@ -83,6 +107,25 @@ Hello OCaml!
 Mustache is:
 - simple
 - fun
+
+
+\$ cat page.mustache
+<html>
+  <body>
+    {{>hello}}
+  </body>
+</html>
+
+\$ $(tname) data.json page.mustache
+<html>
+  <body>
+    Hello OCaml!
+    Mustache is:
+    - simple
+    - fun
+  </body>
+</html>
+
 |};
     `S Manpage.s_bugs;
     `P "Report bugs on https://github.com/rgrinberg/ocaml-mustache/issues";
@@ -96,9 +139,24 @@ Mustache is:
     let doc = "mustache template" in
     Arg.(required & pos 1 (some file) None & info [] ~docv:"TEMPLATE.mustache" ~doc)
   in
-  Term.(const run $ json_file $ template_file),
+  let search_path =
+    let includes =
+      let doc = "Adds the directory $(docv) to the search path for partials." in
+      Arg.(value & opt_all dir [] & info ["I"] ~docv:"DIR" ~doc)
+    in
+    let no_working_dir =
+      let doc = "Disable the implicit inclusion of the working directory
+                 in the search path for partials." in
+      Arg.(value & flag & info ["no-working-dir"] ~doc)
+    in
+    let search_path includes no_working_dir =
+      if no_working_dir then includes
+      else Filename.current_dir_name :: includes
+    in
+    Term.(const search_path $ includes $ no_working_dir)
+  in
+  Term.(const run $ search_path $ json_file $ template_file),
   Term.info "mustache" ~doc ~man
-
 
 let () =
   let open Cmdliner in
