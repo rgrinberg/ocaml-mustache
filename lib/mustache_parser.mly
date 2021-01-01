@@ -46,7 +46,7 @@
 %token <string list> OPEN_SECTION
 %token <int * string> PARTIAL
 %token <int * string> OPEN_PARTIAL_WITH_PARAMS
-%token <string> OPEN_PARAM
+%token <int * string> OPEN_PARAM
 %token <string> CLOSE
 %token <string> COMMENT
 
@@ -89,12 +89,13 @@ mustache_element:
         (Partial { indent; name = start_name; params = Some params;
                    contents = lazy None })
   }
-  | start_name = OPEN_PARAM
+  | param = OPEN_PARAM
     contents = mustache_expr
     end_name = CLOSE {
+      let (indent, start_name) = param in
       check_matching $sloc Param_name start_name end_name;
       with_loc $sloc
-        (Param { name = start_name; contents })
+        (Param { indent; name = start_name; contents })
   }
   | s = COMMENT { with_loc $sloc (Comment s) }
   | s = RAW { with_loc $sloc (String s) }

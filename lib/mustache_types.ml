@@ -59,7 +59,8 @@ module Locs = struct
       params: param list option;
       contents: t option Lazy.t }
   and param =
-   { name: name;
+   { indent: int;
+     name: name;
      contents: t }
   and t =
     { loc : loc;
@@ -88,7 +89,8 @@ module No_locs = struct
       params: param list option;
       contents: t option Lazy.t }
   and param =
-   { name: name;
+   { indent: int;
+     name: name;
      contents: t }
 end
 

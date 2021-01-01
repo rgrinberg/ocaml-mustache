@@ -104,7 +104,7 @@ and mustache = parse
   | "{{/"        { CLOSE (lex_tag lexbuf space partial_name (end_on "}}")) }
   | "{{>"        { PARTIAL (0, lex_tag lexbuf space partial_name (end_on "}}")) }
   | "{{<"        { OPEN_PARTIAL_WITH_PARAMS (0, lex_tag lexbuf space partial_name (end_on "}}")) }
-  | "{{$"        { OPEN_PARAM (lex_tag lexbuf space ident (end_on "}}")) }
+  | "{{$"        { OPEN_PARAM (0, lex_tag lexbuf space ident (end_on "}}")) }
   | "{{!"        { COMMENT (tok_arg lexbuf (comment [])) }
   | raw newline  { new_line lexbuf; RAW (lexeme lexbuf) }
   | raw          { RAW (lexeme lexbuf) }
@@ -159,23 +159,34 @@ and mustache = parse
        let loc_end = get_loc () in
        (tok, loc_start, loc_end)
      in
-     let slurp_line () =
-       let rec loop acc =
-         let tok = get_tok () in
+     let slurp_line lookahead =
+       let rec start = function
+         | None -> loop []
+         | Some lookahead -> continue [] lookahead
+       and loop acc =
+         continue acc (get_tok ())
+       and continue acc tok =
          match tok with
-         | EOF, _, _ -> tok :: acc
-         | RAW s, _, _ when ends_with_newline s -> tok :: acc
+         | EOF, _, _ -> (List.rev (tok :: acc), None)
+         | RAW s, _, _ when ends_with_newline s ->
+           let lookahead = get_tok () in
+           (List.rev (tok :: acc), Some lookahead)
          | _ -> loop (tok :: acc)
        in
-       List.rev (loop [])
+       start lookahead
+     in
+     let count_indentation s =
+       let i = ref 0 in
+       let len = String.length s in
+       while (!i < len
+              && match s.[!i] with ' ' | '\t' | '\r' | '\n' -> true | _ -> false)
+       do
+         incr i
+       done;
+       !i
      in
      let is_blank s =
-       let ret = ref true in
-       for i = 0 to String.length s - 1 do
-         if not (List.mem s.[i] [' '; '\t'; '\r'; '\n']) then
-           ret := false
-       done;
-       !ret
+       count_indentation s = String.length s
      in
      let skip_blanks l =
        let rec loop skipped = function
@@ -185,7 +196,7 @@ and mustache = parse
        in
        loop 0 l
      in
-     let trim_standalone toks =
+     let trim_standalone toks lookahead =
        let toks =
          (* if the line starts with a partial,
             turn the skipped blank into partial indentation *)
@@ -195,6 +206,23 @@ and mustache = parse
            (PARTIAL (skipped, name), loc1, loc2) :: rest
          | (OPEN_PARTIAL_WITH_PARAMS (_      , name), loc1, loc2) :: rest ->
            (OPEN_PARTIAL_WITH_PARAMS (skipped, name), loc1, loc2) :: rest
+         | (OPEN_PARAM (_      , name), loc1, loc2) :: rest ->
+           (* we want to count the indentation of
+                {{$param}}
+                  blah blah
+                {{/param}}
+             as the indentation of 'blah blah', not the indentation
+             of '{{$param}}' itself: using the parameter tag instead of the content
+             as indentation would result in the content being over-indented at each occurrence.
+           *)
+           let skipped =
+             match rest, lookahead with
+             | ((RAW end_of_line, _, _) :: _),
+               Some (RAW start_of_next_line, _, _) when ends_with_newline end_of_line ->
+               count_indentation start_of_next_line
+           | _ -> skipped
+         in
+           (OPEN_PARAM (skipped, name), loc1, loc2) :: rest
          | _ -> toks
        in
        let toks =
@@ -232,11 +260,17 @@ and mustache = parse
        assert (toks <> []);
        toks
      in
-     let buffer = ref [] in
+     let line_rest = ref [] in
+     let lookahead = ref None in
      fun () ->
-       let toks = match !buffer with
-         | (_ :: _) as toks -> toks
-         | [] -> trim_standalone (slurp_line ())
-       in
-       buffer := List.tl toks; List.hd toks
+       match !line_rest with
+       | next :: rest ->
+         line_rest := rest;
+         next
+       | [] ->
+         let next_line, next_lookahead = slurp_line !lookahead in
+         let next_line = trim_standalone next_line next_lookahead in
+         line_rest := List.tl next_line;
+         lookahead := next_lookahead;
+         List.hd next_line
 }

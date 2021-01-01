@@ -38,7 +38,8 @@ and partial =
     params: param list option;
     contents: t option Lazy.t }
 and param =
-  { name: name;
+  { indent: int;
+    name: name;
     contents: t }
 
 type loc =
@@ -141,8 +142,8 @@ val fold : string: (string -> 'a) ->
   section: (inverted:bool -> dotted_name -> 'a -> 'a) ->
   escaped: (dotted_name -> 'a) ->
   unescaped: (dotted_name -> 'a) ->
-  partial: (int -> name -> ?params:(name * 'a) list -> t option Lazy.t -> 'a) ->
-  param: (name -> 'a -> 'a) ->
+  partial: (?indent:int -> name -> ?params:(int * name * 'a) list -> t option Lazy.t -> 'a) ->
+  param: (?indent:int -> name -> 'a -> 'a) ->
   comment: (string -> 'a) ->
   concat:('a list -> 'a) ->
   t -> 'a
@@ -186,10 +187,11 @@ val section : dotted_name -> t -> t
      {{/box}}
     ]}
  *)
-val partial : ?indent:int -> name -> ?params:(name * t) list -> t option Lazy.t -> t
+val partial :
+  ?indent:int -> name -> ?params:(int * name * t) list -> t option Lazy.t -> t
 
 (** [{{$foo}} {{/foo}}] *)
-val param: name -> t -> t
+val param : ?indent:int -> name -> t -> t
 
 (** [{{! this is a comment}}] *)
 val comment : string -> t
@@ -223,7 +225,8 @@ module With_locations : sig
       params: param list option;
       contents: t option Lazy.t }
   and param =
-    { name: name;
+    { indent: int;
+      name: name;
       contents: t }
   and t =
     { loc : loc;
@@ -296,8 +299,8 @@ module With_locations : sig
     section: (loc:loc -> inverted:bool -> dotted_name -> 'a -> 'a) ->
     escaped: (loc:loc -> dotted_name -> 'a) ->
     unescaped: (loc:loc -> dotted_name -> 'a) ->
-    partial: (loc:loc -> int -> name -> ?params:(name * 'a) list -> t option Lazy.t -> 'a) ->
-    param: (loc:loc -> name -> 'a -> 'a) ->
+    partial: (loc:loc -> ?indent:int -> name -> ?params:(int * name * 'a) list -> t option Lazy.t -> 'a) ->
+    param: (loc:loc -> ?indent:int -> name -> 'a -> 'a) ->
     comment: (loc:loc -> string -> 'a) ->
     concat:(loc:loc -> 'a list -> 'a) ->
     t -> 'a
@@ -339,10 +342,11 @@ module With_locations : sig
        {{/box}}
       ]}
    *)
-  val partial : loc:loc -> ?indent:int -> name -> ?params:(name * t) list -> t option Lazy.t -> t
+  val partial :
+    loc:loc -> ?indent:int -> name -> ?params:(int * name * t) list -> t option Lazy.t -> t
 
   (** [{{$foo}} {{/foo}}] *)
-  val param: loc:loc -> name -> t -> t
+  val param : loc:loc -> ?indent:int -> name -> t -> t
 
   (** [{{! this is a comment}}] *)
   val comment : loc:loc -> string -> t
