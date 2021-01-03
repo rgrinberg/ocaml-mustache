@@ -157,10 +157,10 @@ and template_parse_error_kind =
 exception Template_parse_error of template_parse_error
 
 let parse_lx (lexbuf: Lexing.lexbuf) : Locs.t =
-  let raise_err lexbuf kind =
-    let loc =
-      let open Lexing in
-      { loc_start = lexbuf.lex_start_p; loc_end = lexbuf.lex_curr_p } in
+  let loc_of lexbuf =
+    let open Lexing in
+    { loc_start = lexbuf.lex_start_p; loc_end = lexbuf.lex_curr_p } in
+  let raise_err loc kind =
     raise (Template_parse_error { loc; kind })
   in
   try
@@ -169,11 +169,11 @@ let parse_lx (lexbuf: Lexing.lexbuf) : Locs.t =
       Mustache_lexer.(handle_standalone mustache lexbuf)
   with
   | Mustache_lexer.Error msg ->
-    raise_err lexbuf (Lexing msg)
+    raise_err (loc_of lexbuf) (Lexing msg)
   | Mustache_parser.Error ->
-    raise_err lexbuf Parsing
-  | Mismatched_section { start_name; end_name } ->
-    raise_err lexbuf (Mismatched_section { start_name; end_name })
+    raise_err (loc_of lexbuf) Parsing
+  | Mismatched_section { loc; start_name; end_name } ->
+    raise_err loc (Mismatched_section { start_name; end_name })
 
 let of_string s = parse_lx (Lexing.from_string s)
 
