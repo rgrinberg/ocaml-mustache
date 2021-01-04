@@ -24,16 +24,17 @@
   open Mustache_types
   open Mustache_types.Locs
 
-  let parse_section start_name end_name contents =
+  let mkloc (start_pos, end_pos) =
+    { loc_start = start_pos;
+      loc_end = end_pos }
+
+  let parse_section loc start_name end_name contents =
     if start_name <> end_name then
-      raise (Mismatched_section { start_name; end_name });
+      raise (Mismatched_section { loc = mkloc loc; start_name; end_name });
     { contents; name = start_name }
 
-  let with_loc (startpos, endpos) desc =
-    let loc =
-      { loc_start = startpos;
-        loc_end = endpos } in
-    { loc; desc }
+  let with_loc loc desc =
+    { loc = mkloc loc; desc }
 %}
 
 %token EOF
@@ -57,13 +58,13 @@ section:
     e = mustache_expr
     se = CLOSE_SECTION {
     with_loc $sloc
-      (Inverted_section (parse_section ss se e))
+      (Inverted_section (parse_section $sloc ss se e))
   }
   | ss = OPEN_SECTION
     e = mustache_expr
     se = CLOSE_SECTION {
     with_loc $sloc
-      (Section (parse_section ss se e))
+      (Section (parse_section $sloc ss se e))
   }
 
 mustache_element:

@@ -85,6 +85,7 @@ end
 (* this exception is used internally in the parser,
    never exposed to users *)
 exception Mismatched_section of {
+  loc: loc;
   start_name: dotted_name;
   end_name: dotted_name;
 }

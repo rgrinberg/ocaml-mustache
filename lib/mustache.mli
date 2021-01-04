@@ -40,9 +40,9 @@ type loc =
     { loc_start: Lexing.position;
       loc_end: Lexing.position }
 
-(** Read template files; those function may raise [Template_parse_error]. *)
+(** Read template files; those function may raise [Parse_error]. *)
 type template_parse_error
-exception Template_parse_error of template_parse_error
+exception Parse_error of template_parse_error
 
 val parse_lx : Lexing.lexbuf -> t
 val of_string : string -> t
@@ -54,7 +54,7 @@ val of_string : string -> t
 
     {|
       try ignore (Mustache.of_string "{{!")
-      with Mustache.Template_parse_error err ->
+      with Mustache.Parse_error err ->
         Format.eprintf "%a@." Mustache.pp_template_parse_error err
     |}
 *)

@@ -9,11 +9,16 @@ Example usage
 
 ```ocaml
 let tmpl =
-  Mustache.of_string "Hello {{name}}\n\
-                      Mustache is:\n\
-                      {{#qualities}}\
-                      * {{name}}\n\
-                      {{/qualities}}"
+  try
+    Mustache.of_string "Hello {{name}}\n\
+                        Mustache is:\n\
+                        {{#qualities}}\
+                        * {{name}}\n\
+                        {{/qualities}}"
+  with Mustache.Parse_error err ->
+    Format.eprintf "%a@."
+      Mustache.pp_template_parse_error err;
+    exit 3
 
 let json =
   `O [ "name", `String "OCaml"
@@ -24,7 +29,11 @@ let json =
      ]
 
 let rendered =
-  Mustache.render tmpl json
+  try Mustache.render tmpl json
+  with Mustache.Render_error err ->
+    Format.eprintf "%a@."
+      Mustache.pp_render_error err;
+    exit 2
 ```
 
 Spec compliance

@@ -27,13 +27,11 @@ one possible source of error, or both, or none.
 Invalid variable name:
 
   $ mustache reference.json missing-variable.mustache
-  Template render error:
   File "missing-variable.mustache", line 14, characters 40-46:
   the variable 'na' is missing.
   [2]
 
   $ mustache missing-variable.json reference.mustache
-  Template render error:
   File "reference.mustache", line 5, characters 4-12:
   the variable 'data' is missing.
   [2]
@@ -41,13 +39,11 @@ Invalid variable name:
 Invalid section name:
 
   $ mustache reference.json missing-section.mustache
-  Template render error:
   File "missing-section.mustache", line 14, characters 0-55:
   the section 'na' is missing.
   [2]
 
   $ mustache missing-section.json reference.mustache
-  Template render error:
   File "reference.mustache", lines 9-12, characters 0-10:
   the section 'group' is missing.
   [2]
@@ -55,25 +51,21 @@ Invalid section name:
 Error in a dotted path foo.bar (one case for the first component, the other in the second).
 
   $ mustache reference.json invalid-dotted-name-1.mustache
-  Template render error:
   File "invalid-dotted-name-1.mustache", line 10, characters 2-15:
   the variable 'gro' is missing.
   [2]
 
   $ mustache invalid-dotted-name-1.json reference.mustache
-  Template render error:
   File "reference.mustache", lines 9-12, characters 0-10:
   the section 'group' is missing.
   [2]
 
   $ mustache reference.json invalid-dotted-name-2.mustache
-  Template render error:
   File "invalid-dotted-name-2.mustache", line 10, characters 2-15:
   the variable 'group.fir' is missing.
   [2]
 
   $ mustache invalid-dotted-name-2.json reference.mustache
-  Template render error:
   File "reference.mustache", line 10, characters 2-17:
   the variable 'group.first' is missing.
   [2]
@@ -81,13 +73,11 @@ Error in a dotted path foo.bar (one case for the first component, the other in t
 Non-scalar used as a scalar:
 
   $ mustache reference.json non-scalar.mustache
-  Template render error:
   File "non-scalar.mustache", line 4, characters 0-8:
   the value of 'list' is not a valid scalar.
   [2]
 
   $ mustache non-scalar.json reference.mustache
-  Template render error:
   File "reference.mustache", line 1, characters 7-16:
   the value of 'title' is not a valid scalar.
   [2]
@@ -98,7 +88,6 @@ Missing partial (currently the CLI does not support any partial anyway):
 in better `ls` output).
 
   $ mustache reference.json z-missing-partial.mustache
-  Template render error:
   File "z-missing-partial.mustache", line 11, characters 2-13:
   the partial 'second' is missing.
   [2]

@@ -154,14 +154,14 @@ and template_parse_error_kind =
       end_name: dotted_name;
     }
 
-exception Template_parse_error of template_parse_error
+exception Parse_error of template_parse_error
 
 let parse_lx (lexbuf: Lexing.lexbuf) : Locs.t =
-  let raise_err lexbuf kind =
-    let loc =
-      let open Lexing in
-      { loc_start = lexbuf.lex_start_p; loc_end = lexbuf.lex_curr_p } in
-    raise (Template_parse_error { loc; kind })
+  let loc_of lexbuf =
+    let open Lexing in
+    { loc_start = lexbuf.lex_start_p; loc_end = lexbuf.lex_curr_p } in
+  let raise_err loc kind =
+    raise (Parse_error { loc; kind })
   in
   try
     MenhirLib.Convert.Simplified.traditional2revised
@@ -169,11 +169,11 @@ let parse_lx (lexbuf: Lexing.lexbuf) : Locs.t =
       Mustache_lexer.(handle_standalone mustache lexbuf)
   with
   | Mustache_lexer.Error msg ->
-    raise_err lexbuf (Lexing msg)
+    raise_err (loc_of lexbuf) (Lexing msg)
   | Mustache_parser.Error ->
-    raise_err lexbuf Parsing
-  | Mismatched_section { start_name; end_name } ->
-    raise_err lexbuf (Mismatched_section { start_name; end_name })
+    raise_err (loc_of lexbuf) Parsing
+  | Mismatched_section { loc; start_name; end_name } ->
+    raise_err loc (Mismatched_section { start_name; end_name })
 
 let of_string s = parse_lx (Lexing.from_string s)
 
@@ -265,8 +265,8 @@ let () =
       pp_error err;
     Buffer.contents buf in
   Printexc.register_printer (function
-    | Template_parse_error err ->
-      Some (pretty_print "Template_parse_error" pp_template_parse_error err)
+    | Parse_error err ->
+      Some (pretty_print "Parse_error" pp_template_parse_error err)
     | Render_error err ->
       Some (pretty_print "Render_error" pp_render_error err)
     | _ -> None
