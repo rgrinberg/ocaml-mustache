@@ -28,8 +28,8 @@ let load_template template_filename =
     lexbuf.lex_curr_p <- { lexbuf.lex_curr_p with pos_fname = template_filename };
   in
   try Mustache.parse_lx lexbuf
-  with Mustache.Template_parse_error err ->
-    Format.eprintf "Template parse error:@\n%a@."
+  with Mustache.Parse_error err ->
+    Format.eprintf "Parse error:@\n%a@."
       Mustache.pp_template_parse_error err;
     exit 3
 

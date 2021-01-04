@@ -154,14 +154,14 @@ and template_parse_error_kind =
       end_name: dotted_name;
     }
 
-exception Template_parse_error of template_parse_error
+exception Parse_error of template_parse_error
 
 let parse_lx (lexbuf: Lexing.lexbuf) : Locs.t =
   let loc_of lexbuf =
     let open Lexing in
     { loc_start = lexbuf.lex_start_p; loc_end = lexbuf.lex_curr_p } in
   let raise_err loc kind =
-    raise (Template_parse_error { loc; kind })
+    raise (Parse_error { loc; kind })
   in
   try
     MenhirLib.Convert.Simplified.traditional2revised
@@ -265,8 +265,8 @@ let () =
       pp_error err;
     Buffer.contents buf in
   Printexc.register_printer (function
-    | Template_parse_error err ->
-      Some (pretty_print "Template_parse_error" pp_template_parse_error err)
+    | Parse_error err ->
+      Some (pretty_print "Parse_error" pp_template_parse_error err)
     | Render_error err ->
       Some (pretty_print "Render_error" pp_render_error err)
     | _ -> None
