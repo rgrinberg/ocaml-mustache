@@ -29,7 +29,7 @@ let load_template template_filename =
   in
   try Mustache.parse_lx lexbuf
   with Mustache.Parse_error err ->
-    Format.eprintf "Parse error:@\n%a@."
+    Format.eprintf "%a@."
       Mustache.pp_template_parse_error err;
     exit 3
 
@@ -49,7 +49,7 @@ let run search_path json_filename template_filename =
     print_string output;
     flush stdout
   with Mustache.Render_error err ->
-    Format.eprintf "Template render error:@\n%a@."
+    Format.eprintf "%a@."
       Mustache.pp_render_error err;
     exit 2
 

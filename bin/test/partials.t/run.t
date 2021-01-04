@@ -21,7 +21,6 @@ we need to set the search path to locate their included partials.
 
 This fails:
   $ (cd subdir; mustache ../data.json ../foo.mustache)
-  Template render error:
   File "../foo.mustache", line 2, characters 23-31:
   the partial 'bar' is missing.
   [2]
