@@ -4,14 +4,11 @@
 
 Empty json file:
   $ mustache empty.json foo.mustache
-  mustache: internal error, uncaught exception:
-            Ezjsonm.Parse_error(870828711, "JSON.of_buffer expected JSON text (JSON value)")
-            
-  [125]
+  File "empty.json", line 1, character 0: expected JSON text (JSON value)
+  [4]
 
 Invalid json file:
   $ mustache invalid.json foo.mustache
-  mustache: internal error, uncaught exception:
-            Ezjsonm.Parse_error(870828711, "JSON.of_buffer expected value separator or object end (',' or '}')")
-            
-  [125]
+  File "invalid.json", line 1, characters 15-29:
+  expected value separator or object end (',' or '}')
+  [4]

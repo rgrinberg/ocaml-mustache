@@ -24,8 +24,9 @@ Read and write mustache templates, and render them by providing a json object.
 Contains the `mustache` command line utility for driving logic-less templates.
 ")
  (depends
-  ezjsonm
+  (jsonm (>= 1.0.1))
   (ounit :with-test)
+  (ezjsonm :with-test)
   (menhir (>= 20180703))
   (cmdliner (>= 1.0.4))
   (ocaml (>= 4.06))))
