@@ -1,5 +1,10 @@
 ### 3.2.0
 
+* Support for "template inheritance" (partials with parameters)
+  `{{<foo}} {{$param1}}...{{/param1}} {{$param2}}...{{/param2}} {{/foo}`
+  following the widely-implemented semi-official specification
+    https://github.com/mustache/spec/pull/75
+  (@gasche, 58)
 * Partials are now supported in the `mustache` command-line tool (@gasche, #57)
   They are interpreted as template inclusion: "{{>foo/bar}}" will include
   "foo/bar.mustache", relative to the current working directory.

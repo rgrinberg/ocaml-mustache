@@ -94,6 +94,7 @@ let mktest test =
 
 let specs = [
   "comments.json";
+  "inheritance.json";
   "interpolation.json";
   "inverted.json";
   "partials.json";

@@ -43,10 +43,11 @@ module Locs = struct
   type desc =
     | String of string
     | Escaped of dotted_name
-    | Section of section
     | Unescaped of dotted_name
-    | Partial of partial
+    | Section of section
     | Inverted_section of section
+    | Partial of partial
+    | Param of param
     | Concat of t list
     | Comment of string
   and section =
@@ -55,7 +56,12 @@ module Locs = struct
   and partial =
     { indent: int;
       name: name;
+      params: param list option;
       contents: t option Lazy.t }
+  and param =
+   { indent: int;
+     name: name;
+     contents: t }
   and t =
     { loc : loc;
       desc : desc }
@@ -67,10 +73,11 @@ module No_locs = struct
   type t =
     | String of string
     | Escaped of dotted_name
-    | Section of section
     | Unescaped of dotted_name
-    | Partial of partial
+    | Section of section
     | Inverted_section of section
+    | Partial of partial
+    | Param of param
     | Concat of t list
     | Comment of string
   and section =
@@ -79,13 +86,21 @@ module No_locs = struct
   and partial =
     { indent: int;
       name: name;
+      params: param list option;
       contents: t option Lazy.t }
+  and param =
+   { indent: int;
+     name: name;
+     contents: t }
 end
+
+type name_kind = Section_name | Inverted_section_name | Partial_with_params_name | Param_name
+type name_mismatch_error = {
+  name_kind: name_kind;
+  start_name: name;
+  end_name: name;
+}
 
 (* this exception is used internally in the parser,
    never exposed to users *)
-exception Mismatched_section of {
-  loc: loc;
-  start_name: dotted_name;
-  end_name: dotted_name;
-}
+exception Mismatched_names of loc * name_mismatch_error

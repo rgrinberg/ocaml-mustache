@@ -42,10 +42,6 @@ module Json = struct
   let value: t -> value = fun t -> (t :> value)
 end
 
-let option_map o f = match o with
-  | None -> None
-  | Some x -> Some (f x)
-
 let escape_html s =
   let b = Buffer.create (String.length s) in
   String.iter ( function
@@ -73,15 +69,25 @@ and erase_locs_desc = function
   | Locs.Section s -> No_locs.Section (erase_locs_section s)
   | Locs.Unescaped s -> No_locs.Unescaped s
   | Locs.Partial p -> No_locs.Partial (erase_locs_partial p)
+  | Locs.Param pa -> No_locs.Param (erase_locs_param pa)
   | Locs.Inverted_section s -> No_locs.Inverted_section (erase_locs_section s)
   | Locs.Concat l -> No_locs.Concat (List.map erase_locs l)
   | Locs.Comment s -> No_locs.Comment s
-and erase_locs_section { Locs.name; Locs.contents } =
-  { No_locs.name; No_locs.contents = erase_locs contents }
-and erase_locs_partial { Locs.indent; Locs.name; Locs.contents } =
-  { No_locs.indent;
-    No_locs.name;
-    No_locs.contents = lazy (option_map (Lazy.force contents) erase_locs) }
+and erase_locs_section (s : Locs.section) : No_locs.section = {
+  name = s.name;
+  contents = erase_locs s.contents;
+}
+and erase_locs_partial (p : Locs.partial) : No_locs.partial = {
+  indent = p.indent;
+  name = p.name;
+  params = Option.map (List.map ~f:erase_locs_param) p.params;
+  contents = lazy (Option.map erase_locs (Lazy.force p.contents))
+}
+and erase_locs_param (pa : Locs.param) : No_locs.param = {
+  indent = pa.indent;
+  name = pa.name;
+  contents = erase_locs pa.contents;
+}
 
 let rec add_dummy_locs t =
   { Locs.loc = dummy_loc;
@@ -92,16 +98,26 @@ and add_dummy_locs_desc = function
   | No_locs.Section s -> Locs.Section (add_dummy_locs_section s)
   | No_locs.Unescaped s -> Locs.Unescaped s
   | No_locs.Partial p -> Locs.Partial (add_dummy_locs_partial p)
+  | No_locs.Param pa -> Locs.Param (add_dummy_locs_param pa)
   | No_locs.Inverted_section s ->
     Locs.Inverted_section (add_dummy_locs_section s)
   | No_locs.Concat l -> Locs.Concat (List.map add_dummy_locs l)
   | No_locs.Comment s -> Locs.Comment s
-and add_dummy_locs_section { No_locs.name; No_locs.contents } =
-  { Locs.name; Locs.contents = add_dummy_locs contents }
-and add_dummy_locs_partial { No_locs.indent; No_locs.name; No_locs.contents } =
-  { Locs.indent;
-    Locs.name;
-    Locs.contents = lazy (option_map (Lazy.force contents) add_dummy_locs) }
+and add_dummy_locs_section (s : No_locs.section) : Locs.section = {
+  name = s.name;
+  contents = add_dummy_locs s.contents;
+}
+and add_dummy_locs_partial (p : No_locs.partial) : Locs.partial = {
+  indent = p.indent;
+  name = p.name;
+  params = Option.map (List.map ~f:add_dummy_locs_param) p.params;
+  contents = lazy (Option.map add_dummy_locs (Lazy.force p.contents));
+}
+and add_dummy_locs_param (pa : No_locs.param) : Locs.param = {
+  indent = pa.indent;
+  name = pa.name;
+  contents = add_dummy_locs pa.contents;
+}
 
 (* Printing: defined on the ast without locations. *)
 
@@ -126,13 +142,29 @@ let rec pp fmt =
       pp_dotted_name s.name pp s.contents pp_dotted_name s.name
 
   | Partial p ->
-    Format.fprintf fmt "{{> %s }}" p.name
+    begin match p.params with
+      | None -> Format.fprintf fmt "{{> %s }}" p.name
+      | Some params ->
+        Format.fprintf fmt "{{< %s }}%a{{/ %s }}"
+          p.name
+          (Format.pp_print_list pp_param) params
+          p.name
+    end
+
+  | Param pa ->
+    Format.fprintf fmt "%a" pp_param pa
 
   | Comment s ->
     Format.fprintf fmt "{{! %s }}" s
 
   | Concat s ->
     List.iter (pp fmt) s
+
+and pp_param fmt pa =
+  Format.fprintf fmt "{{$%s}}%a{{/%s}}"
+    pa.name
+    pp pa.contents
+    pa.name
 
 let to_string x =
   let b = Buffer.create 0 in
@@ -149,10 +181,7 @@ type template_parse_error = {
 and template_parse_error_kind =
   | Lexing of string
   | Parsing
-  | Mismatched_section of {
-      start_name: dotted_name;
-      end_name: dotted_name;
-    }
+  | Mismatched_names of name_mismatch_error
 
 exception Parse_error of template_parse_error
 
@@ -172,8 +201,8 @@ let parse_lx (lexbuf: Lexing.lexbuf) : Locs.t =
     raise_err (loc_of lexbuf) (Lexing msg)
   | Mustache_parser.Error ->
     raise_err (loc_of lexbuf) Parsing
-  | Mismatched_section { loc; start_name; end_name } ->
-    raise_err loc (Mismatched_section { start_name; end_name })
+  | Mismatched_names (loc, { name_kind; start_name; end_name }) ->
+    raise_err loc (Mismatched_names { name_kind; start_name; end_name })
 
 let of_string s = parse_lx (Lexing.from_string s)
 
@@ -218,10 +247,16 @@ let pp_template_parse_error ppf ({ loc; kind; } : template_parse_error) =
     p ppf "%s" msg
   | Parsing ->
     p ppf "syntax error"
-  | Mismatched_section { start_name; end_name } ->
-    p ppf "Section mismatch: {{#%a}} is closed by {{/%a}}"
-      pp_dotted_name start_name
-      pp_dotted_name end_name
+  | Mismatched_names { name_kind; start_name; end_name } ->
+    p ppf "Open/close tag mismatch: {{%c %s }} is closed by {{/ %s }}"
+      (match name_kind with
+       | Section_name -> '#'
+       | Inverted_section_name -> '^'
+       | Partial_with_params_name -> '<'
+       | Param_name -> '$'
+      )
+      start_name
+      end_name
   end;
   p ppf ".@]"
 
@@ -281,33 +316,78 @@ module Contexts : sig
   val top : t -> Json.value
   val add : t -> Json.value -> t
   val find_name : t -> string -> Json.value option
+  val add_param : t -> Locs.param -> t
+  val find_param : t -> string -> Locs.param option
 end = struct
-  (* a nonempty stack of contexts, most recent first *)
-  type t = Json.value * Json.value list
+  type t = {
+    (* nonempty stack of contexts, most recent first *)
+    stack: Json.value * Json.value list;
 
-  let start js = (js, [])
+    (* an associative list of partial parameters
+       that have been defined *)
+    params: Locs.param list;
+  }
 
-  let top (js, _rest) = js
+  let start js = {
+    stack = (js, []);
+    params = [];
+  }
 
-  let add (top, rest) ctx = (ctx, top::rest)
+  let top { stack = (js, _rest); _ } = js
 
-  let rec find_name ((top, rest) : t) name =
+  let add ctxs ctx =
+    let (top, rest) = ctxs.stack in
+    { ctxs with stack = (ctx, top::rest) }
+
+  let rec find_name ctxs name =
+    let (top, _) = ctxs.stack in
     match top with
     | `Null
     | `Bool _
     | `Float _
     | `String _
     | `A _
-      -> find_in_rest rest name
+      -> find_in_rest ctxs name
     | `O dict ->
       match List.assoc name dict with
-      | exception Not_found -> find_in_rest rest name
+      | exception Not_found -> find_in_rest ctxs name
       | v -> Some v
 
-  and find_in_rest rest name =
+  and find_in_rest ctxs name =
+    let (_, rest) = ctxs.stack in
     match rest with
     | [] -> None
-    | top :: rest -> find_name (top, rest) name
+    | top :: rest -> find_name { ctxs with stack = (top, rest) } name
+
+
+  let param_has_name name (p : Locs.param) = String.equal p.name name
+
+  (* Note: the template-inheritance specification for Mustache
+     (https://github.com/mustache/spec/pull/75) mandates that in case
+     of multi-level inclusion, the "topmost" definition of the
+     parameter wins. In other terms, when traversing the template
+     during rendering, the value defined first for this parameter has
+     precedence over later definitions.
+
+     This is not a natural choice for our partial-with-arguments view,
+     where we would expect the parameter binding closest to the
+     use-site to win. This corresponds to an object-oriented view
+     where applying a partial-with-parameters is seen as "inheriting"
+     the parent/partial template, overriding a method for each
+     parameter. Multi-level inclusions correspond to inheritance
+     hierarchies (the parent template itself inherits from
+     a grandparent), and then late-binding mandates that the
+     definition "last" in the inheritance chain (so closest to the
+     start of the rendering) wins.*)
+  let add_param ctxs (param : Locs.param) =
+    if List.exists (param_has_name param.name) ctxs.params then
+      (* if the parameter is already bound, the existing binding has precedence *)
+      ctxs
+    else
+      {ctxs with params = param :: ctxs.params}
+
+  let find_param ctxs name =
+    List.find_opt (param_has_name name) ctxs.params
 end
 
 let raise_err loc kind =
@@ -376,6 +456,8 @@ module Lookup = struct
     | Some (`A [] | `Bool false | `Null) -> true
     | _ -> false
 
+  let param ctxs ~loc:_ ~key =
+    Contexts.find_param ctxs key
 end
 
 module Render = struct
@@ -397,32 +479,62 @@ module Render = struct
         ?(strict = true)
         (buf : Buffer.t) (m : Locs.t) (js : Json.t)
     =
-    let print_indent indent =
-      for _ = 0 to indent - 1 do
-        Buffer.add_char buf ' '
-      done
-    in
-
     let beginning_of_line = ref true in
 
-    let align indent =
-      if !beginning_of_line then (
-        print_indent indent;
-        beginning_of_line := false
-      )
+    let print_indented buf indent line =
+      assert (indent >= 0);
+      if String.equal line ""
+      then ()
+      else begin
+        for _i = 1 to indent do Buffer.add_char buf ' ' done;
+        Buffer.add_string buf line;
+        beginning_of_line := false;
+      end
+    in
+
+    let print_dedented buf dedent line =
+      assert (dedent >= 0);
+      let rec print_from i =
+        if i = String.length line then ()
+        else if i < dedent && (match line.[i] with ' ' | '\t' -> true | _ -> false)
+        then print_from (i + 1)
+        else begin
+          Buffer.add_substring buf line i (String.length line - i);
+          beginning_of_line := false;
+        end
+      in
+      print_from 0
+    in
+
+    let print_line indent line =
+      if not !beginning_of_line then
+        Buffer.add_string buf line
+      else begin
+        if indent >= 0
+        then print_indented buf indent line
+        else print_dedented buf (-indent) line;
+      end
+    in
+
+    let print_newline buf =
+      Buffer.add_char buf '\n';
+      beginning_of_line := true
     in
 
     let print_indented_string indent s =
       let lines = String.split_on_char '\n' s in
-      align indent; Buffer.add_string buf (List.hd lines);
+      print_line indent (List.hd lines);
       List.iter (fun line ->
-        Buffer.add_char buf '\n';
-        beginning_of_line := true;
-        if line <> "" then (
-          align indent;
-          Buffer.add_string buf line;
-        )
+        print_newline buf;
+        print_line indent line
       ) (List.tl lines)
+    in
+
+    let print_interpolated indent data =
+      (* per the specification, interpolated data should be spliced into the
+         document, with further lines *not* indented specifically; this effect
+         is obtained by calling print_line on the (possibly multiline) data. *)
+      print_line indent data
     in
 
     let rec render indent m (ctxs : Contexts.t) =
@@ -433,12 +545,12 @@ module Render = struct
         print_indented_string indent s
 
       | Escaped name ->
-        align indent;
-        Buffer.add_string buf (escape_html (Lookup.str ~strict ~loc ~key:name ctxs))
+        print_interpolated indent
+          (escape_html (Lookup.str ~strict ~loc ~key:name ctxs))
 
       | Unescaped name ->
-        align indent;
-        Buffer.add_string buf (Lookup.str ~strict ~loc ~key:name ctxs)
+        print_interpolated indent
+          (Lookup.str ~strict ~loc ~key:name ctxs)
 
       | Inverted_section s ->
         if Lookup.inverted ctxs ~loc ~key:s.name
@@ -452,13 +564,29 @@ module Render = struct
         | elem        -> enter elem
         end
 
-      | Partial { indent = partial_indent; name; contents } ->
-        begin match (Lazy.force contents, strict) with
-        | Some p, _ -> render (indent + partial_indent) p ctxs
-        | None, false -> ()
-        | None, true ->
-          raise_err loc (Missing_partial { name })
+      | Partial { indent = partial_indent; name; params; contents } ->
+        let partial = Lazy.force contents in
+        let ctxs =
+          match params with
+          | None -> ctxs
+          | Some params ->
+            List.fold_left ~f:Contexts.add_param ~init:ctxs params
+        in
+        begin match partial with
+        | None ->
+          if strict then
+            raise_err loc (Missing_partial { name })
+        | Some partial ->
+          render (indent + partial_indent) partial ctxs
         end
+
+      | Param default_param ->
+        let param =
+          match Lookup.param ctxs ~loc ~key:default_param.name with
+          | Some passed_param -> passed_param
+          | None -> default_param
+        in
+        render (indent + default_param.indent - param.indent) param.contents ctxs
 
       | Comment _c -> ()
 
@@ -485,8 +613,8 @@ module Without_locations = struct
 
   let to_string = to_string
 
-  let rec fold ~string ~section ~escaped ~unescaped ~partial ~comment ~concat t =
-    let go = fold ~string ~section ~escaped ~unescaped ~partial ~comment ~concat in
+  let rec fold ~string ~section ~escaped ~unescaped ~partial ~param ~comment ~concat t =
+    let go = fold ~string ~section ~escaped ~unescaped ~partial ~param ~comment ~concat in
     match t with
     | String s -> string s
     | Escaped s -> escaped s
@@ -498,7 +626,13 @@ module Without_locations = struct
       section ~inverted:true name (go contents)
     | Concat ms ->
       concat (List.map ms ~f:go)
-    | Partial p -> partial p.indent p.name p.contents
+    | Partial {indent; name; params; contents} ->
+      let params =
+        Option.map (List.map ~f:(fun {indent; name; contents} -> (indent, name, go contents))) params
+      in
+      partial ?indent:(Some indent) name ?params contents
+    | Param { indent; name; contents } ->
+      param ?indent:(Some indent) name (go contents)
 
   module Infix = struct
     let (^) y x = Concat [x; y]
@@ -509,7 +643,11 @@ module Without_locations = struct
   let unescaped s = Unescaped s
   let section n c = Section { name = n ; contents = c }
   let inverted_section n c = Inverted_section { name = n ; contents = c }
-  let partial ?(indent = 0) n c = Partial { indent ; name = n ; contents = c }
+  let partial ?(indent = 0) n ?params c =
+    let params =
+      Option.map (List.map ~f:(fun (indent, name, contents) -> {indent; name; contents})) params in
+    Partial { indent ; name = n ; params; contents = c }
+  let param ?(indent=0) n c = Param { indent; name = n; contents = c }
   let concat t = Concat t
   let comment s = Comment s
 
@@ -517,16 +655,16 @@ module Without_locations = struct
     let section ~inverted =
       if inverted then inverted_section else section
     in
-    let partial indent name contents =
+    let partial ?indent name ?params contents =
       let contents' = lazy (
         match Lazy.force contents with
-        | None -> option_map (partials name) (expand_partials partials)
+        | None -> Option.map (expand_partials partials) (partials name)
         | Some t_opt -> Some t_opt
       )
       in
-      partial ~indent name contents'
+      partial ?indent name ?params contents'
     in
-    fold ~string:raw ~section ~escaped ~unescaped ~partial ~comment ~concat
+    fold ~string:raw ~section ~escaped ~unescaped ~partial ~param ~comment ~concat
 
 
   let render_buf ?strict ?(partials = fun _ -> None) buf (m : t) (js : Json.t) =
@@ -559,8 +697,8 @@ module With_locations = struct
 
   let to_string x = to_string (erase_locs x)
 
-  let rec fold ~string ~section ~escaped ~unescaped ~partial ~comment ~concat t =
-    let go = fold ~string ~section ~escaped ~unescaped ~partial ~comment ~concat in
+  let rec fold ~string ~section ~escaped ~unescaped ~partial ~param ~comment ~concat t =
+    let go = fold ~string ~section ~escaped ~unescaped ~partial ~param ~comment ~concat in
     let { desc; loc } = t in
     match desc with
     | String s -> string ~loc s
@@ -573,7 +711,12 @@ module With_locations = struct
       section ~loc ~inverted:true name (go contents)
     | Concat ms ->
       concat ~loc (List.map ms ~f:go)
-    | Partial p -> partial ~loc p.indent p.name p.contents
+    | Partial p ->
+      let params =
+        Option.map (List.map ~f:(fun {indent; name; contents} -> (indent, name, go contents))) p.params in
+      partial ~loc ?indent:(Some p.indent) p.name ?params p.contents
+    | Param { indent; name; contents } ->
+      param ~loc ?indent:(Some indent) name (go contents)
 
   module Infix = struct
     let (^) t1 t2 = { desc = Concat [t1; t2]; loc = dummy_loc }
@@ -588,26 +731,31 @@ module With_locations = struct
   let inverted_section ~loc n c =
     { desc = Inverted_section { name = n; contents = c };
       loc }
-  let partial ~loc ?(indent = 0) n c =
-    { desc = Partial { indent; name = n; contents = c };
+  let partial ~loc ?(indent = 0) n ?params c =
+    let params =
+      Option.map (List.map ~f:(fun (indent, name, contents) -> {indent; name; contents})) params in
+    { desc = Partial { indent; name = n; params; contents = c };
       loc }
   let concat ~loc t = { desc = Concat t; loc }
   let comment ~loc s = { desc = Comment s; loc }
+  let param ~loc ?(indent = 0) n c =
+    { desc = Param { indent; name = n; contents = c };
+      loc }
 
   let rec expand_partials (partials : name -> t option) : t -> t =
     let section ~loc ~inverted =
       if inverted then inverted_section ~loc else section ~loc
     in
-    let partial ~loc indent name contents =
+    let partial ~loc ?indent name ?params contents =
       let contents' = lazy (
         match Lazy.force contents with
-        | None -> option_map (partials name) (expand_partials partials)
+        | None -> Option.map (expand_partials partials) (partials name)
         | Some t_opt -> Some t_opt
       )
       in
-      partial ~loc ~indent name contents'
+      partial ~loc ?indent name ?params contents'
     in
-    fold ~string:raw ~section ~escaped ~unescaped ~partial ~comment ~concat
+    fold ~string:raw ~section ~escaped ~unescaped ~partial ~param ~comment ~concat
 
   let render_buf ?strict ?(partials = fun _ -> None) buf (m : t) (js : Json.t) =
     let m = expand_partials partials m in

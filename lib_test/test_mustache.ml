@@ -103,6 +103,26 @@ let tests = [
     , [ ( `O [ "a" , `String "foo" ],
           "foo" ) ] ) ;
 
+    ( (* check that a whitespace line is omitted
+         if it contains (several) standalone tokens *)
+"Begin
+{{#foo}} {{#bar}}
+Middle
+{{/bar}} {{/foo}}
+End
+"
+    , concat [
+        raw "Begin\n";
+        section ["foo"] (section ["bar"] (raw "Middle\n"));
+        raw "End\n";
+      ]
+    , [ ( `O [ "foo" , `O []; "bar", `O [] ],
+"Begin
+Middle
+End
+"
+        ) ] ) ;
+
   ]
 
 let mkloc (lnum_s, bol_s, cnum_s, lnum_e, bol_e, cnum_e) =

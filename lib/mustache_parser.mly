@@ -28,10 +28,12 @@
     { loc_start = start_pos;
       loc_end = end_pos }
 
-  let parse_section loc start_name end_name contents =
+  let check_matching loc name_kind start_name end_name =
     if start_name <> end_name then
-      raise (Mismatched_section { loc = mkloc loc; start_name; end_name });
-    { contents; name = start_name }
+      raise (Mismatched_names (mkloc loc, { name_kind; start_name; end_name }))
+
+  let dotted name =
+    string_of_dotted_name name
 
   let with_loc loc desc =
     { loc = mkloc loc; desc }
@@ -42,8 +44,10 @@
 %token <string list> UNESCAPE
 %token <string list> OPEN_INVERTED_SECTION
 %token <string list> OPEN_SECTION
-%token <string list> CLOSE_SECTION
 %token <int * string> PARTIAL
+%token <int * string> OPEN_PARTIAL_WITH_PARAMS
+%token <int * string> OPEN_PARAM
+%token <string> CLOSE
 %token <string> COMMENT
 
 %token <string> RAW
@@ -53,31 +57,47 @@
 
 %%
 
-section:
-  | ss = OPEN_INVERTED_SECTION
-    e = mustache_expr
-    se = CLOSE_SECTION {
-    with_loc $sloc
-      (Inverted_section (parse_section $sloc ss se e))
-  }
-  | ss = OPEN_SECTION
-    e = mustache_expr
-    se = CLOSE_SECTION {
-    with_loc $sloc
-      (Section (parse_section $sloc ss se e))
-  }
-
 mustache_element:
-  | elt = UNESCAPE { with_loc $sloc (Unescaped elt) }
   | elt = ESCAPE { with_loc $sloc (Escaped elt) }
-  | elt = PARTIAL {
+  | elt = UNESCAPE { with_loc $sloc (Unescaped elt) }
+  | start_name = OPEN_SECTION
+    contents = mustache_expr
+    end_name = CLOSE {
+      check_matching $sloc Section_name (dotted start_name) end_name;
       with_loc $sloc
-        (Partial { indent = fst elt;
-                   name = snd elt;
+        (Section { name = start_name; contents })
+  }
+  | start_name = OPEN_INVERTED_SECTION
+    contents = mustache_expr
+    end_name = CLOSE {
+      check_matching $sloc Inverted_section_name (dotted start_name) end_name;
+      with_loc $sloc
+        (Inverted_section { name = start_name; contents })
+  }
+  | partial = PARTIAL {
+      let (indent, name) = partial in
+      with_loc $sloc
+        (Partial { indent; name; params = None;
                    contents = lazy None })
-    }
+  }
+  | partial = OPEN_PARTIAL_WITH_PARAMS
+    params = params
+    end_name = CLOSE {
+      let (indent, start_name) = partial in
+      check_matching $sloc Partial_with_params_name start_name end_name;
+      with_loc $sloc
+        (Partial { indent; name = start_name; params = Some params;
+                   contents = lazy None })
+  }
+  | param = OPEN_PARAM
+    contents = mustache_expr
+    end_name = CLOSE {
+      let (indent, start_name) = param in
+      check_matching $sloc Param_name start_name end_name;
+      with_loc $sloc
+        (Param { indent; name = start_name; contents })
+  }
   | s = COMMENT { with_loc $sloc (Comment s) }
-  | sec = section { sec }
   | s = RAW { with_loc $sloc (String s) }
 
 mustache_expr:
@@ -86,6 +106,32 @@ mustache_expr:
     | [] -> with_loc $sloc (String "")
     | [x] -> x
     | xs -> with_loc $sloc (Concat xs)
+  }
+
+(* The template-inheritance specification describes partial-with-params
+   application of the form:
+
+   {{<foo}}
+     text here is ignored
+     {{$param1}}default value{{/param1}}
+     ignored again
+     {{$param2}}default value{{/param2}}
+     still ignored
+   {{/foo}}
+
+  It is weird that content that is not a template parameter is simply
+  ignored inside the partial invocation, but this is explicitly
+  mandated (for raw content) by the specification.
+
+  We could at least fail when non-raw content is ignored; not
+  implemented yet.
+*)
+params:
+  | elts = list(mustache_element) {
+    elts |> List.filter_map (function
+      | { loc = _; desc = Param param } -> Some param
+      | _ -> None
+    )
   }
 
 mustache:
