@@ -1,0 +1,43 @@
+
+# Parsed template
+
+## parsed
+---
+Hello {{ name }}
+Mustache is:
+{{#qualities}}* {{ name }}
+{{/qualities}}
+---
+
+## rendered
+---
+Hello OCaml
+Mustache is:
+* awesome
+* simple
+* fun
+
+---
+
+# Programmed template
+
+## parsed
+---
+Hello {{ name }}
+Mustache is:
+{{#qualities}}* {{ name }}
+{{/qualities}}
+---
+
+## rendered
+---
+Hello OCaml
+Mustache is:
+* awesome
+* simple
+* fun
+
+---
+
+# Output comparison
+Outputs match as expected.
