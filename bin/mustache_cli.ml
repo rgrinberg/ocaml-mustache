@@ -33,8 +33,72 @@ let load_template template_filename =
       Mustache.pp_template_parse_error err;
     exit 3
 
+module Json = struct
+  type error =
+    | Jsonm of Jsonm.error
+    | Incomplete_input
+    | Parse_error of string
+
+  type jsonm_loc = (int * int) * (int * int)
+
+  exception Error of jsonm_loc * error
+
+  let json_of_decoder (d : Jsonm.decoder) =
+    (* inspired from the Jsonm documentation example *)
+    let raise_err err = raise (Error (Jsonm.decoded_range d, err)) in
+    let dec d = match Jsonm.decode d with
+    | `Lexeme l -> l
+    | `Error e -> raise_err (Jsonm e)
+    | `End | `Await -> raise_err Incomplete_input
+    in
+    let wrap k = (k : Mustache.Json.value -> 'r :> Mustache.Json.t -> 'r) in
+    let rec value v (k : Mustache.Json.value -> _) d = match v with
+    | `Os -> obj [] (wrap k) d  | `As -> arr [] (wrap k) d
+    | `Null | `Bool _ | `String _ | `Float _ as v -> k v d
+    | _ -> raise_err (Parse_error "value fields expected")
+    and arr vs (k : Mustache.Json.t -> _) d = match dec d with
+    | `Ae -> k (`A (List.rev vs)) d
+    | v -> value v (fun v -> arr (v :: vs) k) d
+    and obj ms (k : Mustache.Json.t -> _) d = match dec d with
+    | `Oe -> k (`O (List.rev ms)) d
+    | `Name n -> value (dec d) (fun v -> obj ((n, v) :: ms) k) d
+    | _ -> raise_err (Parse_error "object fields expected")
+    in
+    let t v (k : Mustache.Json.t -> _) d = match v with
+    | `Os -> obj [] k d  | `As -> arr [] k d
+    | _ -> raise_err (Parse_error "Json.t expected")
+    in
+    t (dec d) (fun v _ -> v) d
+
+  let pp_error ppf (fname, jsonm_loc, error) =
+    let ((start_line, start_col), (end_line, end_col)) = jsonm_loc in
+    let lexpos line col : Lexing.position = {
+      pos_fname = fname;
+      pos_lnum = line;
+      pos_bol = 0;
+      pos_cnum = col;
+    } in
+    let loc : Mustache.loc = {
+      loc_start = lexpos start_line start_col;
+      loc_end = lexpos end_line end_col;
+    } in
+    Format.fprintf ppf "%a:@ %t"
+      Mustache.pp_loc loc
+      (fun ppf -> match error with
+         | Jsonm e -> Jsonm.pp_error ppf e
+         | Incomplete_input -> Format.fprintf ppf "Incomplete input."
+         | Parse_error s -> Format.fprintf ppf "Parse error: %s." s
+      )
+end
+
 let load_json json_filename =
-  Ezjsonm.from_string (load_file json_filename)
+  let input = load_file json_filename in
+  let decoder = Jsonm.decoder (`String input) in
+  try Json.json_of_decoder decoder with
+  | Json.Error (jsonm_loc, error) ->
+    Format.eprintf "%a@."
+      Json.pp_error (json_filename, jsonm_loc, error);
+    exit 4
 
 let run search_path json_filename template_filename =
   let env = load_json json_filename in

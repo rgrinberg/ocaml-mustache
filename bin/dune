@@ -2,7 +2,7 @@
  (name mustache_cli)
  (public_name mustache)
  (modules mustache_cli)
- (libraries mustache ezjsonm cmdliner))
+ (libraries mustache jsonm cmdliner))
 
 (rule
  (with-stdout-to mustache.1

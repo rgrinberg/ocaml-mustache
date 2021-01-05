@@ -40,6 +40,8 @@ type loc =
     { loc_start: Lexing.position;
       loc_end: Lexing.position }
 
+val pp_loc : Format.formatter -> loc -> unit
+
 (** Read template files; those function may raise [Parse_error]. *)
 type template_parse_error
 exception Parse_error of template_parse_error
