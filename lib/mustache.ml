@@ -61,69 +61,53 @@ let dummy_loc =
   { loc_start = Lexing.dummy_pos;
     loc_end = Lexing.dummy_pos }
 
-let rec erase_locs { Locs.desc; _ } =
-  erase_locs_desc desc
-and erase_locs_desc = function
-  | Locs.String s -> No_locs.String s
-  | Locs.Escaped s -> No_locs.Escaped s
-  | Locs.Section s -> No_locs.Section (erase_locs_section s)
-  | Locs.Unescaped s -> No_locs.Unescaped s
-  | Locs.Partial p -> No_locs.Partial (erase_locs_partial p)
-  | Locs.Param pa -> No_locs.Param (erase_locs_param pa)
-  | Locs.Inverted_section s -> No_locs.Inverted_section (erase_locs_section s)
-  | Locs.Concat l -> No_locs.Concat (List.map erase_locs l)
-  | Locs.Comment s -> No_locs.Comment s
-and erase_locs_section (s : Locs.section) : No_locs.section = {
-  name = s.name;
-  contents = erase_locs s.contents;
-}
-and erase_locs_partial (p : Locs.partial) : No_locs.partial = {
-  indent = p.indent;
-  name = p.name;
-  params = Option.map (List.map ~f:erase_locs_param) p.params;
-  contents = lazy (Option.map erase_locs (Lazy.force p.contents))
-}
-and erase_locs_param (pa : Locs.param) : No_locs.param = {
-  indent = pa.indent;
-  name = pa.name;
-  contents = erase_locs pa.contents;
-}
+(* [erase_locs] and [dummy_locs] are not so useful
+   now that we only have one AST (with locations).
 
-let rec add_dummy_locs t =
-  { Locs.loc = dummy_loc;
-    Locs.desc = add_dummy_locs_desc t }
-and add_dummy_locs_desc = function
-  | No_locs.String s -> Locs.String s
-  | No_locs.Escaped s -> Locs.Escaped s
-  | No_locs.Section s -> Locs.Section (add_dummy_locs_section s)
-  | No_locs.Unescaped s -> Locs.Unescaped s
-  | No_locs.Partial p -> Locs.Partial (add_dummy_locs_partial p)
-  | No_locs.Param pa -> Locs.Param (add_dummy_locs_param pa)
-  | No_locs.Inverted_section s ->
-    Locs.Inverted_section (add_dummy_locs_section s)
-  | No_locs.Concat l -> Locs.Concat (List.map add_dummy_locs l)
-  | No_locs.Comment s -> Locs.Comment s
-and add_dummy_locs_section (s : No_locs.section) : Locs.section = {
-  name = s.name;
-  contents = add_dummy_locs s.contents;
-}
-and add_dummy_locs_partial (p : No_locs.partial) : Locs.partial = {
-  indent = p.indent;
-  name = p.name;
-  params = Option.map (List.map ~f:add_dummy_locs_param) p.params;
-  contents = lazy (Option.map add_dummy_locs (Lazy.force p.contents));
-}
-and add_dummy_locs_param (pa : No_locs.param) : Locs.param = {
-  indent = pa.indent;
-  name = pa.name;
-  contents = add_dummy_locs pa.contents;
-}
+   They are kept for backwards compatibility; they can also be useful
+   to compare templates while ignoring location information. *)
+let erase_locs t =
+  let open Ast in
+  let rec erase_locs (t : t) : t = {
+    loc = dummy_loc;
+    desc = erase_locs_desc t.desc;
+  }
+  and erase_locs_desc = function
+    | String s -> String s
+    | Escaped s -> Escaped s
+    | Section s -> Section (erase_locs_section s)
+    | Unescaped s -> Unescaped s
+    | Partial p -> Partial (erase_locs_partial p)
+    | Param pa -> Param (erase_locs_param pa)
+    | Inverted_section s -> Inverted_section (erase_locs_section s)
+    | Concat l -> Concat (List.map erase_locs l)
+    | Comment s -> Comment s
+  and erase_locs_section (s : section) : section = {
+    name = s.name;
+    contents = erase_locs s.contents;
+  }
+  and erase_locs_partial (p : partial) : partial = {
+    indent = p.indent;
+    name = p.name;
+    params = Option.map (List.map ~f:erase_locs_param) p.params;
+    contents = lazy (Option.map erase_locs (Lazy.force p.contents))
+  }
+  and erase_locs_param (pa : param) : param = {
+    indent = pa.indent;
+    name = pa.name;
+    contents = erase_locs pa.contents;
+  }
+  in
+  erase_locs t
+
+
+let add_dummy_locs t = erase_locs t
 
 (* Printing: defined on the ast without locations. *)
 
-let rec pp fmt =
-  let open No_locs in
-  function
+let rec pp fmt m =
+  let open Ast in
+  match m.desc with
   | String s ->
     Format.pp_print_string fmt s
 
@@ -185,7 +169,7 @@ and template_parse_error_kind =
 
 exception Parse_error of template_parse_error
 
-let parse_lx (lexbuf: Lexing.lexbuf) : Locs.t =
+let parse_lx (lexbuf: Lexing.lexbuf) : Ast.t =
   let loc_of lexbuf =
     let open Lexing in
     { loc_start = lexbuf.lex_start_p; loc_end = lexbuf.lex_curr_p } in
@@ -316,8 +300,8 @@ module Contexts : sig
   val top : t -> Json.value
   val add : t -> Json.value -> t
   val find_name : t -> string -> Json.value option
-  val add_param : t -> Locs.param -> t
-  val find_param : t -> string -> Locs.param option
+  val add_param : t -> Ast.param -> t
+  val find_param : t -> string -> Ast.param option
 end = struct
   type t = {
     (* nonempty stack of contexts, most recent first *)
@@ -325,7 +309,7 @@ end = struct
 
     (* an associative list of partial parameters
        that have been defined *)
-    params: Locs.param list;
+    params: Ast.param list;
   }
 
   let start js = {
@@ -360,7 +344,7 @@ end = struct
     | top :: rest -> find_name { ctxs with stack = (top, rest) } name
 
 
-  let param_has_name name (p : Locs.param) = String.equal p.name name
+  let param_has_name name (p : Ast.param) = String.equal p.name name
 
   (* Note: the template-inheritance specification for Mustache
      (https://github.com/mustache/spec/pull/75) mandates that in case
@@ -379,7 +363,7 @@ end = struct
      a grandparent), and then late-binding mandates that the
      definition "last" in the inheritance chain (so closest to the
      start of the rendering) wins.*)
-  let add_param ctxs (param : Locs.param) =
+  let add_param ctxs (param : Ast.param) =
     if List.exists (param_has_name param.name) ctxs.params then
       (* if the parameter is already bound, the existing binding has precedence *)
       ctxs
@@ -463,7 +447,7 @@ end
 module Render = struct
   (* Rendering is defined on the ast without locations. *)
 
-  open Locs
+  open Ast
 
   (* Render a template whose partials have already been expanded.
 
@@ -477,7 +461,7 @@ module Render = struct
      partial-resolution function. *)
   let render_expanded
         ?(strict = true)
-        (buf : Buffer.t) (m : Locs.t) (js : Json.t)
+        (buf : Buffer.t) (m : Ast.t) (js : Json.t)
     =
     let beginning_of_line = ref true in
 
@@ -602,88 +586,8 @@ end
    included at the toplevel.
 *)
 
-module Without_locations = struct
-  include No_locs
-
-  let parse_lx lexbuf = erase_locs (parse_lx lexbuf)
-  let of_string s = erase_locs (of_string s)
-
-  let pp = pp
-  let to_formatter = pp
-
-  let to_string = to_string
-
-  let rec fold ~string ~section ~escaped ~unescaped ~partial ~param ~comment ~concat t =
-    let go = fold ~string ~section ~escaped ~unescaped ~partial ~param ~comment ~concat in
-    match t with
-    | String s -> string s
-    | Escaped s -> escaped s
-    | Unescaped s -> unescaped s
-    | Comment s -> comment s
-    | Section { name; contents } ->
-      section ~inverted:false name (go contents)
-    | Inverted_section { name; contents } ->
-      section ~inverted:true name (go contents)
-    | Concat ms ->
-      concat (List.map ms ~f:go)
-    | Partial {indent; name; params; contents} ->
-      let params =
-        Option.map (List.map ~f:(fun {indent; name; contents} -> (indent, name, go contents))) params
-      in
-      partial ?indent:(Some indent) name ?params contents
-    | Param { indent; name; contents } ->
-      param ?indent:(Some indent) name (go contents)
-
-  module Infix = struct
-    let (^) y x = Concat [x; y]
-  end
-
-  let raw s = String s
-  let escaped s = Escaped s
-  let unescaped s = Unescaped s
-  let section n c = Section { name = n ; contents = c }
-  let inverted_section n c = Inverted_section { name = n ; contents = c }
-  let partial ?(indent = 0) n ?params c =
-    let params =
-      Option.map (List.map ~f:(fun (indent, name, contents) -> {indent; name; contents})) params in
-    Partial { indent ; name = n ; params; contents = c }
-  let param ?(indent=0) n c = Param { indent; name = n; contents = c }
-  let concat t = Concat t
-  let comment s = Comment s
-
-  let rec expand_partials (partials : name -> t option) : t -> t =
-    let section ~inverted =
-      if inverted then inverted_section else section
-    in
-    let partial ?indent name ?params contents =
-      let contents' = lazy (
-        match Lazy.force contents with
-        | None -> Option.map (expand_partials partials) (partials name)
-        | Some t_opt -> Some t_opt
-      )
-      in
-      partial ?indent name ?params contents'
-    in
-    fold ~string:raw ~section ~escaped ~unescaped ~partial ~param ~comment ~concat
-
-
-  let render_buf ?strict ?(partials = fun _ -> None) buf (m : t) (js : Json.t) =
-    let m = add_dummy_locs (expand_partials partials m) in
-    Render.render_expanded buf ?strict m js
-
-  let render ?strict ?partials (m : t) (js : Json.t) =
-    let buf = Buffer.create 0 in
-    render_buf ?strict ?partials buf m js ;
-    Buffer.contents buf
-
-  let render_fmt ?strict ?partials fmt m js =
-    let str = render ?strict ?partials m js in
-    Format.pp_print_string fmt str;
-    Format.pp_print_flush fmt ()
-end
-
 module With_locations = struct
-  include Locs
+  include Ast
 
   (* re-exported here for backward-compatibility *)
   type nonrec loc = loc = { loc_start: Lexing.position; loc_end: Lexing.position }
@@ -692,10 +596,10 @@ module With_locations = struct
   let parse_lx = parse_lx
   let of_string = of_string
 
-  let pp fmt x = pp fmt (erase_locs x)
+  let pp fmt x = pp fmt x
   let to_formatter = pp
 
-  let to_string x = to_string (erase_locs x)
+  let to_string x = to_string x
 
   let rec fold ~string ~section ~escaped ~unescaped ~partial ~param ~comment ~concat t =
     let go = fold ~string ~section ~escaped ~unescaped ~partial ~param ~comment ~concat in
@@ -771,6 +675,55 @@ module With_locations = struct
     Format.pp_print_string fmt str;
     Format.pp_print_flush fmt ()
 end
+
+module Without_locations = struct
+  include Ast
+
+  include With_locations
+
+  let noloc f x = f ~loc:dummy_loc x
+
+  let raw = noloc raw
+  let escaped = noloc escaped
+  let unescaped = noloc unescaped
+  let section = noloc section
+  let inverted_section = noloc inverted_section
+  let partial ?indent = noloc (partial ?indent)
+  let param ?indent = noloc (param ?indent)
+  let concat = noloc concat
+  let comment = noloc comment
+
+  let fold
+        ~string
+        ~section
+        ~escaped
+        ~unescaped
+        ~partial
+        ~param
+        ~comment
+        ~concat
+    =
+    let igloc f ~loc:_ = f in
+    let string = igloc string
+    and section = igloc section
+    and escaped = igloc escaped
+    and unescaped = igloc unescaped
+    and partial = igloc partial
+    and param = igloc param
+    and comment = igloc comment
+    and concat = igloc concat
+    in
+    fold
+      ~string
+      ~section
+      ~escaped
+      ~unescaped
+      ~partial
+      ~param
+      ~comment
+      ~concat
+end
+
 
 
 (* Include [Without_locations] at the toplevel, to preserve backwards

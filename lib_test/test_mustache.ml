@@ -165,7 +165,7 @@ let tests_with_locs = With_locations.[
    , [ (`A [], "" )]);
 ]
 
-let roundtrip : t -> t =
+let normalize : t -> t =
   fun t -> erase_locs (add_dummy_locs t)
 
 let () =
@@ -185,10 +185,8 @@ let () =
                 i (Printexc.to_string exn)
             )
         in
-        (Printf.sprintf "%d - erase_locs/add_dummy_locs roundtrip" i
-         >:: assert_equal (roundtrip template) template)
-        :: (Printf.sprintf "%d - parsing" i
-         >:: assert_equal expected_parsing template)
+        (Printf.sprintf "%d - parsing %S" i input
+         >:: assert_equal (normalize expected_parsing) (normalize template))
         :: List.mapi (fun j (data, expected) ->
           let rendered =
             try Mustache.render template data

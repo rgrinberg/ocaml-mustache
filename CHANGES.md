@@ -1,5 +1,12 @@
 ### 3.2.0
 
+* Remove the AST without locations: now all functions build an AST with locations;
+  in particular, parsing always provide located error messages.
+  To ease backward-compatibility, the smart constructors still use the
+  same interface, using dummy locations by default, with
+  a With_locations module for users who wish to explicitly provide
+  locations.
+  (@gasche, #65)
 * Support for "template inheritance" (partials with parameters)
   `{{<foo}} {{$param1}}...{{/param1}} {{$param2}}...{{/param2}} {{/foo}`
   following the widely-implemented semi-official specification

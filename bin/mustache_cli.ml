@@ -1,8 +1,3 @@
-module Mustache = struct
-  include Mustache
-  include With_locations
-end
-
 let load_file f =
   let ic = open_in f in
   let n = in_channel_length ic in
