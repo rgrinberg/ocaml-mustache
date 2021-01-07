@@ -16,10 +16,18 @@ module Json : sig (** Compatible with Ezjsonm *)
     | `O of (string * value) list ]
 end
 
+type loc =
+  { loc_start: Lexing.position;
+    loc_end: Lexing.position }
+
 type name = string
 type dotted_name = string list
 
-type t =
+type t = {
+  loc : loc;
+  desc : desc;
+}
+and desc =
   | String of string
   | Escaped of dotted_name
   | Unescaped of dotted_name
@@ -38,13 +46,9 @@ and partial =
     params: param list option;
     contents: t option Lazy.t }
 and param =
-  { indent: int;
-    name: name;
-    contents: t }
-
-type loc =
-    { loc_start: Lexing.position;
-      loc_end: Lexing.position }
+ { indent: int;
+   name: name;
+   contents: t }
 
 val pp_loc : Format.formatter -> loc -> unit
 

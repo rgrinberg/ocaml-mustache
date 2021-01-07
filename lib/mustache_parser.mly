@@ -22,7 +22,7 @@
 }}}*/
 %{
   open Mustache_types
-  open Mustache_types.Locs
+  open Mustache_types.Ast
 
   let mkloc (start_pos, end_pos) =
     { loc_start = start_pos;
@@ -53,7 +53,7 @@
 %token <string> RAW
 
 %start mustache
-%type <Mustache_types.Locs.t> mustache
+%type <Mustache_types.Ast.t> mustache
 
 %%
 

@@ -37,40 +37,14 @@ let pp_dotted_name fmt = function
 let string_of_dotted_name n =
   Format.asprintf "%a" pp_dotted_name n
 
-module Locs = struct
+module Ast = struct
   [@@@warning "-30"]
 
-  type desc =
-    | String of string
-    | Escaped of dotted_name
-    | Unescaped of dotted_name
-    | Section of section
-    | Inverted_section of section
-    | Partial of partial
-    | Param of param
-    | Concat of t list
-    | Comment of string
-  and section =
-    { name: dotted_name;
-      contents: t }
-  and partial =
-    { indent: int;
-      name: name;
-      params: param list option;
-      contents: t option Lazy.t }
-  and param =
-   { indent: int;
-     name: name;
-     contents: t }
-  and t =
-    { loc : loc;
-      desc : desc }
-end
-
-module No_locs = struct
-  [@@@warning "-30"]
-
-  type t =
+  type t = {
+    loc : loc;
+    desc : desc;
+  }
+  and desc =
     | String of string
     | Escaped of dotted_name
     | Unescaped of dotted_name
