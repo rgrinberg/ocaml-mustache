@@ -12,7 +12,10 @@ clean:
 doc:
 	dune build @doc
 
-.PHONY: check test all clean doc
+fmt:
+	dune build @fmt --auto-promote
+
+.PHONY: check test all clean doc fmt
 
 .PHONY: release
 release: ## Release on Opam

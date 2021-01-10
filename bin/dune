@@ -5,7 +5,8 @@
  (libraries mustache jsonm cmdliner))
 
 (rule
- (with-stdout-to mustache.1
+ (with-stdout-to
+  mustache.1
   (run mustache --help=groff)))
 
 (install
