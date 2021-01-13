@@ -1,7 +1,9 @@
   $ echo "{}" > data.json
 
-This test is the reference example from the template-inheritance specification:
-https://github.com/mustache/spec/pull/75
+# Reference example
+
+This test is the reference example from the template-inheritance
+specification: https://github.com/mustache/spec/pull/75
 
   $ cat data.json         # the json data
   {}
@@ -42,7 +44,7 @@ https://github.com/mustache/spec/pull/75
   </html>
 
 
-We also test the indentation of parameter blocks.
+# Indentation of parameter blocks
 
   $ cat test-indentation.mustache
   <p>
@@ -79,3 +81,27 @@ We also test the indentation of parameter blocks.
     This text is very indented in the source,
     it should be indented naturally in the output.
   </p>
+
+
+# Errors on invalid partial block content
+
+Inside a partial block, we expect parameter blocks. The specification
+mandates that text be accepted and ignored, but we error on other tags.
+
+  $ cat invalid-partial-usage.mustache
+  {{<base}}
+    This text is ignored.
+    {{$header}}
+      This is a parameter as expected.
+    {{/header}}
+    {{! commments are also fine }}
+    {{#content}}
+      This is a typo, it should be $content.
+    {{/content}}
+  {{/base}}
+
+  $ mustache data.json invalid-partial-usage.mustache
+  File "invalid-partial-usage.mustache", lines 7-9, characters 2-14:
+  Inside the partial block {{< base }}...{{/ base }},
+  we expect parameter blocks {{$foo}...{{/foo}} but no other sorts of tags.
+  [3]
