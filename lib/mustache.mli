@@ -226,13 +226,13 @@ val concat : t list -> t
 (** Variant of the [t] mustache datatype which includes source-file locations,
     and associated functions. *)
 module With_locations : sig
-  (* this type has been moved out, keep an alias for backward-compatibility *)
+  (* these types have been moved out, keep an alias for backward-compatibility *)
   type nonrec loc = loc =
     { loc_start : Lexing.position
     ; loc_end : Lexing.position
     }
 
-  type desc =
+  and desc = desc =
     | String of string
     | Escaped of dotted_name
     | Unescaped of dotted_name
@@ -243,25 +243,25 @@ module With_locations : sig
     | Concat of t list
     | Comment of string
 
-  and section =
+  and section = section =
     { name : dotted_name
     ; contents : t
     }
 
-  and partial =
+  and partial = partial =
     { indent : int
     ; name : name
     ; params : param list option
     ; contents : t option Lazy.t
     }
 
-  and param =
+  and param = param =
     { indent : int
     ; name : name
     ; contents : t
     }
 
-  and t =
+  and t = t =
     { loc : loc
     ; desc : desc
     }
