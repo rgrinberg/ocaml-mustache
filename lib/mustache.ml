@@ -141,6 +141,7 @@ and template_parse_error_kind =
   | Lexing of string
   | Parsing
   | Mismatched_names of name_mismatch_error
+  | Invalid_as_partial_parameter of name * Ast.t
 
 exception Parse_error of template_parse_error
 
@@ -158,6 +159,8 @@ let parse_lx (lexbuf : Lexing.lexbuf) : Ast.t =
   | Mustache_parser.Error -> raise_err (loc_of lexbuf) Parsing
   | Mismatched_names (loc, { name_kind; start_name; end_name }) ->
     raise_err loc (Mismatched_names { name_kind; start_name; end_name })
+  | Invalid_as_partial_parameter (name, elt) ->
+    raise_err elt.loc (Invalid_as_partial_parameter (name, elt))
 
 let of_string s = parse_lx (Lexing.from_string s)
 
@@ -210,7 +213,13 @@ let pp_template_parse_error ppf ({ loc; kind } : template_parse_error) =
       | Inverted_section_name -> '^'
       | Partial_with_params_name -> '<'
       | Param_name -> '$' )
-      start_name end_name );
+      start_name end_name
+  | Invalid_as_partial_parameter (name, _t) ->
+    p ppf "Inside the partial block@ {{< %s }}...{{/ %s }},@ \
+           we expect parameter blocks@ {{$foo}...{{/foo}}@ \
+           but no other sorts of tags"
+      name name
+  );
   p ppf ".@]"
 
 type render_error_kind =
@@ -418,6 +427,7 @@ module Lookup = struct
 
   let param ctxs ~loc:_ ~key = Contexts.find_param ctxs key
 end
+
 
 module Render = struct
   (* Rendering is defined on the ast without locations. *)

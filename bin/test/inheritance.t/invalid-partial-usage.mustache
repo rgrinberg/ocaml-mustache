@@ -1,0 +1,10 @@
+{{<base}}
+  This text is ignored.
+  {{$header}}
+    This is a parameter as expected.
+  {{/header}}
+  {{! commments are also fine }}
+  {{#content}}
+    This is a typo, it should be $content.
+  {{/content}}
+{{/base}}

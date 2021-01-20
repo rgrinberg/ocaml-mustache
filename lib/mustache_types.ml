@@ -87,5 +87,6 @@ type name_mismatch_error =
   ; end_name : name
   }
 
-(* this exception is used internally in the parser, never exposed to users *)
+(* these exceptions are used internally in the parser, never exposed to users *)
 exception Mismatched_names of loc * name_mismatch_error
+exception Invalid_as_partial_parameter of name * Ast.t
