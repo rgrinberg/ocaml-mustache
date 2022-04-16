@@ -27,7 +27,7 @@ Contains the `mustache` command line utility for driving logic-less templates.
 ")
  (depends
   (jsonm (>= 1.0.1))
-  (ounit :with-test)
+  (ounit2 :with-test)
   (ezjsonm :with-test)
   (menhir (>= 20180703))
   (cmdliner (>= 1.0.4))

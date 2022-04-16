@@ -18,7 +18,7 @@ bug-reports: "https://github.com/rgrinberg/ocaml-mustache/issues"
 depends: [
   "dune" {>= "2.7"}
   "jsonm" {>= "1.0.1"}
-  "ounit" {with-test}
+  "ounit2" {with-test}
   "ezjsonm" {with-test}
   "menhir" {>= "20180703"}
   "cmdliner" {>= "1.0.4"}
