@@ -32,9 +32,9 @@ This works with the "-I .." option:
 Note that the include directory is *not* used to locate the template
 (or data) argument. This fails:
   $ (cd subdir; mustache -I .. ../data.json foo.mustache)
-  mustache: TEMPLATE.mustache argument: no `foo.mustache' file or directory
-  Usage: mustache [OPTION]... DATA.json TEMPLATE.mustache
-  Try `mustache --help' for more information.
+  mustache: TEMPLATE.mustache argument: no 'foo.mustache' file or directory
+  Usage: mustache [-I DIR] [--no-working-dir] [OPTION]… DATA.json TEMPLATE.mustache
+  Try 'mustache --help' for more information.
   [124]
 
 Search path precedence order.
