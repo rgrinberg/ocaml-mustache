@@ -1,2 +1,2 @@
 (cram
- (deps %{bin:mustache}))
+ (deps %{bin:mustache-ocaml}))

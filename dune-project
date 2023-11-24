@@ -34,7 +34,7 @@ Read and write mustache templates, and render them.
  (name mustache-cli)
  (synopsis "CLI for Mustache logic-less templates")
  (description "
-Command line utility `mustache` for driving logic-less templates.
+Command line utility `mustache-ocaml` for driving logic-less templates.
 Read and write mustache templates, and render them by providing a json object.
 ")
  (depends

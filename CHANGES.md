@@ -1,3 +1,7 @@
+### 3.3.0
+* Rename the CLI tool to `mustache-ocaml`. It's now part of the new opam
+  package `mustache-cli` (@psafont, #71)
+
 ### 3.2.0
 
 * Remove the AST without locations: now all functions build an AST with locations;
