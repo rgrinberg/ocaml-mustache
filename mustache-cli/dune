@@ -1,7 +1,7 @@
 (executable
  (name mustache_cli)
  (public_name mustache)
- (modules mustache_cli)
+ (package mustache-cli)
  (libraries mustache jsonm cmdliner))
 
 (rule
@@ -11,5 +11,5 @@
 
 (install
  (section man)
- (package mustache)
+ (package mustache-cli)
  (files mustache.1))
