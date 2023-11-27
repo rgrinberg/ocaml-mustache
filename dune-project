@@ -22,13 +22,23 @@
  (name mustache)
  (synopsis "Mustache logic-less templates in OCaml")
  (description "
-Read and write mustache templates, and render them by providing a json object.
-Contains the `mustache` command line utility for driving logic-less templates.
+Read and write mustache templates, and render them.
 ")
  (depends
-  (jsonm (>= 1.0.1))
   (ounit2 :with-test)
   (ezjsonm :with-test)
   (menhir (>= 20180703))
-  (cmdliner (>= 1.0.4))
+  (ocaml (>= 4.08))))
+
+(package
+ (name mustache-cli)
+ (synopsis "CLI for Mustache logic-less templates")
+ (description "
+Command line utility `mustache-ocaml` for driving logic-less templates.
+Read and write mustache templates, and render them by providing a json object.
+")
+ (depends
+  (jsonm (>= 1.0.1))
+  (mustache (= :version))
+  (cmdliner (>= 1.1.0))
   (ocaml (>= 4.08))))

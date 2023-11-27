@@ -305,9 +305,8 @@ let run_command =
     in
     Term.(const search_path $ includes $ no_working_dir)
   in
-  ( Term.(const run $ search_path $ json_file $ template_file)
-  , Term.info "mustache" ~doc ~man:manpage )
+  Cmd.v
+    (Cmd.info "mustache" ~doc ~man:manpage)
+    Term.(const run $ search_path $ json_file $ template_file)
 
-let () =
-  let open Cmdliner in
-  Term.exit @@ Term.eval run_command
+let () = exit @@ Cmdliner.Cmd.eval run_command

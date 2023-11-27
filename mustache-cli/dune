@@ -1,0 +1,16 @@
+(executable
+ (name mustache_cli)
+ (public_name mustache-ocaml)
+ (package mustache-cli)
+ (libraries mustache jsonm cmdliner))
+
+(rule
+ (deps (:bin mustache_cli.exe))
+ (action
+  (with-stdout-to mustache.1
+   (run %{bin} --help=groff))))
+
+(install
+ (section man)
+ (package mustache-cli)
+ (files mustache.1))

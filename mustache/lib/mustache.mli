@@ -78,8 +78,8 @@ val of_string : string -> t
     formatter (in case you want to use it within boxes), so you should remember
     to do it yourself.
 
-    {| try ignore (Mustache.of_string "{{!") with Mustache.Parse_error err ->
-    Format.eprintf "%a@." Mustache.pp_template_parse_error err |} *)
+    {[ try ignore (Mustache.of_string "{{!") with Mustache.Parse_error err ->
+    Format.eprintf "%a@." Mustache.pp_template_parse_error err ]} *)
 val pp_template_parse_error : Format.formatter -> template_parse_error -> unit
 
 (** [pp fmt template] print a template as raw mustache to the formatter [fmt]. *)

@@ -11,7 +11,7 @@ Simple usage:
   - {{name}}
   {{/qualities}}
 
-  $ mustache data.json hello.mustache
+  $ mustache-ocaml data.json hello.mustache
   Hello OCaml!
   Mustache is:
   - simple
@@ -27,7 +27,7 @@ Using a partial to include a subpage:
     </body>
   </html>
 
-  $ mustache data.json page.mustache
+  $ mustache-ocaml data.json page.mustache
   <html>
     <body>
       Hello OCaml!
@@ -65,7 +65,7 @@ Using a partial with parameters to include a layout around a page:
     </body>
   </html>
 
-  $ mustache new-post.json post.mustache
+  $ mustache-ocaml new-post.json post.mustache
   <html>
     <head>
       <title>Post: New Post</title>

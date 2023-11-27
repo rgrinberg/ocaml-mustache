@@ -33,7 +33,7 @@ specification: https://github.com/mustache/spec/pull/75
     <title>{{$title}}Default title{{/title}}</title>
   </head>
 
-  $ mustache data.json mypage.mustache
+  $ mustache-ocaml data.json mypage.mustache
   <html>
     <head>
       <title>My page title</title>
@@ -60,7 +60,7 @@ specification: https://github.com/mustache/spec/pull/75
   {{/indented-block}}
   {{/test-indentation}}
 
-  $ mustache data.json test-indent-more.mustache
+  $ mustache-ocaml data.json test-indent-more.mustache
   <p>
     The test below should be indented in the same way as this line.
     This text is not indented in the source,
@@ -75,7 +75,7 @@ specification: https://github.com/mustache/spec/pull/75
       {{/indented-block}}
   {{/test-indentation}}
 
-  $ mustache data.json test-indent-less.mustache
+  $ mustache-ocaml data.json test-indent-less.mustache
   <p>
     The test below should be indented in the same way as this line.
     This text is very indented in the source,
@@ -100,7 +100,7 @@ mandates that text be accepted and ignored, but we error on other tags.
     {{/content}}
   {{/base}}
 
-  $ mustache data.json invalid-partial-usage.mustache
+  $ mustache-ocaml data.json invalid-partial-usage.mustache
   File "invalid-partial-usage.mustache", lines 7-9, characters 2-14:
   Inside the partial block {{< base }}...{{/ base }},
   we expect parameter blocks {{$foo}...{{/foo}} but no other sorts of tags.
