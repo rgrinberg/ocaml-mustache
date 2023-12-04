@@ -1,3 +1,4 @@
 (tests
  (libraries mustache ezjsonm)
+ (package mustache)
  (names user_program))

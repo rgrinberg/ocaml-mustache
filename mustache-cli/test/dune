@@ -1,2 +1,3 @@
 (cram
+ (package mustache-cli)
  (deps %{bin:mustache-ocaml}))

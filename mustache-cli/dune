@@ -5,9 +5,11 @@
  (libraries mustache jsonm cmdliner))
 
 (rule
- (deps (:bin mustache_cli.exe))
+ (deps
+  (:bin mustache_cli.exe))
  (action
-  (with-stdout-to mustache.1
+  (with-stdout-to
+   mustache.1
    (run %{bin} --help=groff))))
 
 (install

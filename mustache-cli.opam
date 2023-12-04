@@ -16,7 +16,7 @@ license: "MIT"
 homepage: "https://github.com/rgrinberg/ocaml-mustache"
 bug-reports: "https://github.com/rgrinberg/ocaml-mustache/issues"
 depends: [
-  "dune" {>= "2.7"}
+  "dune" {>= "2.8"}
   "jsonm" {>= "1.0.1"}
   "mustache" {= version}
   "cmdliner" {>= "1.1.0"}
